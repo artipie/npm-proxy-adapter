@@ -11,7 +11,7 @@
 [![Maven Central](https://img.shields.io/maven-central/v/com.artipie/npm-proxy-adapter.svg)](https://maven-badges.herokuapp.com/maven-central/com.artipie/npm-proxy-adapter)
 [![PDD status](http://www.0pdd.com/svg?name=yegor256/npm-files)](http://www.0pdd.com/p?name=yegor256/npm-files)
 
-# npm-remote-adapter
+# npm-proxy-adapter
 
 ## Usage
 This is the dependency you need:
@@ -19,7 +19,7 @@ This is the dependency you need:
 ```xml
 <dependency>
   <groupId>com.artipie</groupId>
-  <artifactId>npm-remote-adapter</artifactId>
+  <artifactId>npm-proxy-adapter</artifactId>
   <version>[...]</version>
 </dependency>
 ```
@@ -27,8 +27,8 @@ This is the dependency you need:
 ## How it works?
 
 After initial setup of the proxy repository, user can specify it to work with NPM.
-User call `npm install --registry=https://artipie.com/npm-remote-registry <package_name>` 
-or setup default registry with `npm set registry https://artipie.com/npm-remote-registry` 
+User call `npm install --registry=https://artipie.com/npm-proxy-registry <package_name>` 
+or setup default registry with `npm set registry https://artipie.com/npm-proxy-registry` 
 command. NPM sends HTTP requests to specified URL and adapter processes them. It proxies 
 request to the remote repository previously setup. After getting artifact, it caches 
 received data and transform before sending it back to client. The next request will not 
@@ -57,7 +57,7 @@ accept-encoding: gzip,deflate
 Host: artipie.com
 ```
 At first, we try to get `{package}/package.json` file in the storage. If there is no
-such file, we send request from `npm-remote-adapter` to remote registry:
+such file, we send request from `npm-proxy-adapter` to remote registry:
 ```http request
 GET /{package} HTTP/1.1
 Host: registry.npmjs.org
@@ -84,7 +84,7 @@ CF-Cache-Status: HIT
 Expect-CT: max-age=604800, report-uri="https://report-uri.cloudflare.com/cdn-cgi/beacon/expect-ct"
 Server: cloudflare
 ```
-`Last-Modified` header will be persisted to `{package}/metadata.json`. Than we process body.
+`Last-Modified` header will be persisted to `{package}/package.metadata`. Than we process body.
 Body is persisted to `{package}/package.json` but all `tarball` fields need to be modified. 
 There are two options: re-write all links on load or re-write them dynamically on each
 request. The second option is better (it allows to use reverse proxy, for example), but 
@@ -137,7 +137,7 @@ implemented later.
 
 ### Artifact package TTL
 
-NPM first read package metadata. As been noticed before, remote adapter caches the response.
+NPM first read package metadata. As been noticed before, proxy adapter caches the response.
 But when new artifact version will be uploaded to remote repository, metadata will be changed.
 So proxy repository must reload metadata. It should either no cache metadata responses or
 use expiring cache with customizable TTL for it.
