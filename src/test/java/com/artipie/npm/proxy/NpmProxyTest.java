@@ -36,7 +36,6 @@ import io.vertx.reactivex.core.Vertx;
 import io.vertx.reactivex.core.http.HttpServer;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import net.minidev.json.JSONObject;
 import net.minidev.json.parser.JSONParser;
@@ -111,12 +110,8 @@ final class NpmProxyTest {
             cached != null
         );
         JSONAssert.assertEquals(
-            IOUtils.toString(
-                Objects.requireNonNull(
-                    Thread.currentThread()
-                        .getContextClassLoader()
-                        .getResourceAsStream("cached.json")
-                ),
+            IOUtils.resourceToString(
+                "/cached.json",
                 StandardCharsets.UTF_8
             ),
             cached,
@@ -214,10 +209,8 @@ final class NpmProxyTest {
     private static HttpServer prepareServer(
         final Vertx vertx,
         final VertxTestContext context) throws IOException {
-        final String original = IOUtils.toString(
-            Objects.requireNonNull(
-                Thread.currentThread().getContextClassLoader().getResourceAsStream("original.json")
-            ),
+        final String original = IOUtils.resourceToString(
+            "/original.json",
             StandardCharsets.UTF_8
         );
         return vertx.createHttpServer().requestHandler(

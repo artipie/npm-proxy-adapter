@@ -27,7 +27,6 @@ import com.jayway.jsonpath.DocumentContext;
 import com.jayway.jsonpath.JsonPath;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.util.Objects;
 import net.minidev.json.JSONArray;
 import org.apache.commons.io.IOUtils;
 import org.hamcrest.MatcherAssert;
@@ -43,10 +42,8 @@ import org.junit.jupiter.api.Test;
 public class PackageJsonTransformerTest {
     @Test
     public void testOriginalPackageParsing() throws IOException {
-        final String original = IOUtils.toString(
-            Objects.requireNonNull(
-                Thread.currentThread().getContextClassLoader().getResourceAsStream("original.json")
-            ),
+        final String original = IOUtils.resourceToString(
+            "/original.json",
             StandardCharsets.UTF_8
         );
         final String transformed = PackageJsonTransformer.transformOriginal(original, "asdas");
@@ -56,17 +53,15 @@ public class PackageJsonTransformerTest {
         for (final Object ref: refs) {
             MatcherAssert.assertThat(
                 (String) ref,
-                new StringStartsWith(false, PackageJsonTransformer.PLACEHOLDER)
+                new StringStartsWith(PackageJsonTransformer.PLACEHOLDER)
             );
         }
     }
 
     @Test
     public void testCachedPackageParsing() throws IOException {
-        final String cached = IOUtils.toString(
-            Objects.requireNonNull(
-                Thread.currentThread().getContextClassLoader().getResourceAsStream("cached.json")
-            ),
+        final String cached = IOUtils.resourceToString(
+            "/cached.json",
             StandardCharsets.UTF_8
         );
         final String transformed = PackageJsonTransformer.transformCached(
@@ -79,7 +74,7 @@ public class PackageJsonTransformerTest {
         for (final Object ref: refs) {
             MatcherAssert.assertThat(
                 (String) ref,
-                new StringStartsWith(false, "http://localhost/")
+                new StringStartsWith("http://localhost/")
             );
         }
     }
