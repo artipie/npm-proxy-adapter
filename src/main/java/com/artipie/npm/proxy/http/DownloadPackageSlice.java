@@ -33,7 +33,7 @@ import com.artipie.http.rs.RsWithBody;
 import com.artipie.http.rs.RsWithHeaders;
 import com.artipie.http.rs.RsWithStatus;
 import com.artipie.npm.proxy.NpmProxy;
-import com.artipie.npm.proxy.json.PackageJsonTransformer;
+import com.artipie.npm.proxy.json.ClientPackage;
 import com.jcabi.log.Logger;
 import hu.akarnokd.rxjava2.interop.SingleInterop;
 import java.nio.ByteBuffer;
@@ -49,6 +49,7 @@ import org.reactivestreams.Publisher;
  * HTTP slice for download package requests.
  * @since 0.1
  * @checkstyle ReturnCountCheck (200 lines)
+ * @checkstyle ClassDataAbstractionCouplingCheck (200 lines)
  */
 public final class DownloadPackageSlice implements Slice {
     /**
@@ -94,7 +95,8 @@ public final class DownloadPackageSlice implements Slice {
                         new RsWithBody(
                             new RsWithStatus(RsStatus.OK),
                             new Content.From(
-                                DownloadPackageSlice.clientFormat(pkg.data(), headers).getBytes()
+                                DownloadPackageSlice.clientFormat(pkg.data(), headers)
+                                    .getBytes()
                             )
                         ),
                         Arrays.asList(
@@ -120,6 +122,6 @@ public final class DownloadPackageSlice implements Slice {
             .findAny().orElseThrow(
                 () -> new RuntimeException("Could not find Host header in request")
             ).getValue();
-        return PackageJsonTransformer.transformCached(data, String.format("http://%s", host));
+        return new ClientPackage(data, String.format("http://%s", host)).value();
     }
 }

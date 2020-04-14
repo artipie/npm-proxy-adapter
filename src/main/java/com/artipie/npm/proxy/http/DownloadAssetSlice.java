@@ -45,6 +45,7 @@ import org.reactivestreams.Publisher;
 /**
  * HTTP slice for download asset requests.
  * @since 0.1
+ * @checkstyle ClassDataAbstractionCouplingCheck (200 lines)
  */
 public final class DownloadAssetSlice implements Slice {
     /**
@@ -68,10 +69,10 @@ public final class DownloadAssetSlice implements Slice {
 
     @Override
     public Response response(final String line,
-        final Iterable<Map.Entry<String, String>> headers,
+        final Iterable<Map.Entry<String, String>> rqheaders,
         final Publisher<ByteBuffer> body) {
         Logger.debug(
-            DownloadPackageSlice.class,
+            DownloadAssetSlice.class,
             "Processing download asset request for query %s",
             line
         );

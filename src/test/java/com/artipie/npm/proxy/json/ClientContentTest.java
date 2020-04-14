@@ -34,40 +34,18 @@ import org.hamcrest.core.StringStartsWith;
 import org.junit.jupiter.api.Test;
 
 /**
- * Package JSON transformer test.
+ * Client package content test.
  *
  * @since 0.1
  */
-@SuppressWarnings("PMD.AvoidDuplicateLiterals")
-public class PackageJsonTransformerTest {
+public class ClientContentTest {
     @Test
-    public void testOriginalPackageParsing() throws IOException {
-        final String original = IOUtils.resourceToString(
-            "/original.json",
-            StandardCharsets.UTF_8
-        );
-        final String transformed = PackageJsonTransformer.transformOriginal(original, "asdas");
-        final DocumentContext json = JsonPath.parse(transformed);
-        final JSONArray refs = json.read("$.versions.[*].dist.tarball", JSONArray.class);
-        MatcherAssert.assertThat("Could not find asset references", refs.size() > 0);
-        for (final Object ref: refs) {
-            MatcherAssert.assertThat(
-                (String) ref,
-                new StringStartsWith(PackageJsonTransformer.PLACEHOLDER)
-            );
-        }
-    }
-
-    @Test
-    public void testCachedPackageParsing() throws IOException {
+    public void getsValue() throws IOException {
         final String cached = IOUtils.resourceToString(
             "/cached.json",
             StandardCharsets.UTF_8
         );
-        final String transformed = PackageJsonTransformer.transformCached(
-            cached,
-            "http://localhost"
-        );
+        final String transformed = new ClientPackage(cached, "http://localhost").value();
         final DocumentContext json = JsonPath.parse(transformed);
         final JSONArray refs = json.read("$.versions.[*].dist.tarball", JSONArray.class);
         MatcherAssert.assertThat("Could not find asset references", refs.size() > 0);

@@ -91,7 +91,7 @@ final class NpmProxyTest {
     private Storage storage;
 
     @Test
-    public void testGetPackage(final VertxTestContext context)
+    public void getsPackage(final VertxTestContext context)
         throws ParseException, IOException, JSONException {
         final NpmPackage pkg = this.npm.getPackage("asdas").blockingGet();
         context.completeNow();
@@ -132,7 +132,7 @@ final class NpmProxyTest {
     }
 
     @Test
-    public void testGetPackageNotFound(final VertxTestContext context) {
+    public void cannotFindPackage(final VertxTestContext context) {
         MatcherAssert.assertThat(
             "Unexpected package found",
             this.npm.getPackage("not-found").blockingGet() == null
@@ -141,7 +141,7 @@ final class NpmProxyTest {
     }
 
     @Test
-    public void testGetAsset(final VertxTestContext context) throws ParseException {
+    public void getsAsset(final VertxTestContext context) throws ParseException {
         final NpmAsset asset = this.npm.getAsset("asdas/-/asdas-1.0.0.tgz").blockingGet();
         context.completeNow();
         MatcherAssert.assertThat("Asset is null", asset != null);
@@ -184,7 +184,7 @@ final class NpmProxyTest {
     }
 
     @Test
-    public void testGetAssetNotFound(final VertxTestContext context) {
+    public void cannotFindAsset(final VertxTestContext context) {
         MatcherAssert.assertThat(
             "Unexpected asset found",
             this.npm.getAsset("not-found").blockingGet() == null
@@ -248,7 +248,7 @@ final class NpmProxyTest {
     @Nested
     class CachedValues {
         @Test
-        public void testGetPackage() {
+        public void getsPackage() {
             final NpmPackage pkg = NpmProxyTest.this.npm.getPackage("asdas").blockingGet();
             MatcherAssert.assertThat("Package is null", pkg != null);
             MatcherAssert.assertThat(
@@ -258,7 +258,7 @@ final class NpmProxyTest {
         }
 
         @Test
-        public void testGetPackageUnavailable() {
+        public void failsWhenGetPackage() {
             MatcherAssert.assertThat(
                 "Unexpected package found",
                 NpmProxyTest.this.npm.getPackage("not-found").blockingGet() == null
@@ -266,7 +266,7 @@ final class NpmProxyTest {
         }
 
         @Test
-        public void testGetAsset() {
+        public void getsAsset() {
             final NpmAsset asset = NpmProxyTest.this.npm.getAsset("asdas/-/asdas-1.0.0.tgz")
                 .blockingGet();
             MatcherAssert.assertThat("Asset is null", asset != null);
@@ -281,7 +281,7 @@ final class NpmProxyTest {
         }
 
         @Test
-        public void testGetAssetUnavailable() {
+        public void failsWhenGetAsset() {
             MatcherAssert.assertThat(
                 "Unexpected asset found",
                 NpmProxyTest.this.npm.getAsset("not-found").blockingGet() == null

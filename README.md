@@ -26,10 +26,11 @@ This is the dependency you need:
 
 ## How it works?
 
-After initial setup of the proxy repository, user can specify it to work with NPM.
-User call `npm install --registry=https://artipie.com/npm-proxy-registry <package_name>` 
-or setup default registry with `npm set registry https://artipie.com/npm-proxy-registry` 
-command. NPM sends HTTP requests to specified URL and adapter processes them. It proxies 
+After initial setup of the proxy repository, it can be used to work with NPM.
+NPM registry to install package from can be specified explicitly 
+`npm install --registry=https://artipie.com/npm-proxy-registry <package_name>` or setup 
+as default with `npm set registry https://artipie.com/npm-proxy-registry` command. 
+NPM sends HTTP requests to specified URL and adapter processes them. It proxies 
 request to the remote repository previously setup. After getting artifact, it caches 
 received data and transform before sending it back to client. The next request will not 
 require remote repository call - the cached data will be used.
@@ -41,7 +42,8 @@ describes 6 methods. And one more method is called by `npm` client to get
 security audit information. We will support just one in the beginning: get package by name.
 
 ### Get package by name method description
-Receive request from `npm` client (`{package}` can be compound):
+Receive request from `npm` client. `{package}` parameter can be in simple (`package-name`) or 
+scoped (`@scope/package-name`) form:
 ```http request
 GET /path-to-repository/{package}
 connection: keep-alive
@@ -83,15 +85,75 @@ Vary: accept-encoding, accept
 CF-Cache-Status: HIT
 Expect-CT: max-age=604800, report-uri="https://report-uri.cloudflare.com/cdn-cgi/beacon/expect-ct"
 Server: cloudflare
+
+{
+  "_id": "asdas",
+  "_rev": "2-a72e29284ebf401cd7cd8f1aca69af9b",
+  "name": "asdas",
+  "dist-tags": {
+    "latest": "1.0.0"
+  },
+  "versions": {
+    "1.0.0": {
+      "name": "asdas",
+      "version": "1.0.0",
+      "description": "",
+      "main": "1.js",
+      "scripts": {
+        "test": "echo \"Error: no test specified\" && exit 1"
+      },
+      "author": "",
+      "license": "ISC",
+      "_id": "asdas@1.0.0",
+      "_npmVersion": "5.4.2",
+      "_nodeVersion": "8.8.0",
+      "_npmUser": {
+        "name": "parasoltree",
+        "email": "shilijingtian@outlook.com"
+      },
+      "dist": {
+        "integrity": "sha512-kHJzGk3NudKHGhrYS4lhDS8K/QUMbPLEtk22yXiQbcQWD5pSbhOI4A9yk1owav8IVyW1RlAQHkKn7IjONV8Kdg==",
+        "shasum": "6470dd80b94c00db02420e5f7bc6a87d026e76e4",
+        "tarball": "https://registry.npmjs.org/asdas/-/asdas-1.0.0.tgz"
+      },
+      "maintainers": [
+        {
+          "name": "parasoltree",
+          "email": "shilijingtian@outlook.com"
+        }
+      ],
+      "_npmOperationalInternal": {
+        "host": "s3://npm-registry-packages",
+        "tmp": "tmp/asdas-1.0.0.tgz_1511792387536_0.039010856533423066"
+      },
+      "directories": {},
+      "deprecated": "deprecated"
+    }
+  },
+  "readme": "ERROR: No README data found!",
+  "maintainers": [
+    {
+      "name": "parasoltree",
+      "email": "shilijingtian@outlook.com"
+    }
+  ],
+  "time": {
+    "modified": "2018-12-26T02:15:33.808Z",
+    "created": "2017-11-27T14:19:47.631Z",
+    "1.0.0": "2017-11-27T14:19:47.631Z"
+  },
+  "license": "ISC",
+  "readmeFilename": ""
+}
 ```
-`Last-Modified` header will be persisted to `{package}/package.metadata`. Than we process body.
-Body is persisted to `{package}/package.json` but all `tarball` fields need to be modified. 
-There are two options: re-write all links on load or re-write them dynamically on each
-request. The second option is better (it allows to use reverse proxy, for example), but 
-it creates an additional load.
+`Last-Modified` header will be persisted to `{package}/package.metadata`,
+response body will be persisted to `{package}/package.json`. Fields `tarball` 
+in `package.json` have to be modified: we can either re-write all links on 
+initial upload or update them dynamically on each request. The second option is 
+better (it allows to use reverse proxy, for example), but it creates an additional load.
 
 After that we generate response from the `{package}/package.json` and 
-`{package}/metadata.json`. We replace placeholders in the `tarball` fields with
+`{package}/package.metadata`. We replace placeholders in the `tarball` fields with
 actual Artipie repository address and send the following headers:
 ```http request
 HTTP/1.1 200 OK
@@ -106,8 +168,8 @@ where `Last-Modified` header is taken from `metadata.json`.
 
 ### Get tarball method description
 It's the simplified case of the Get package call. We don't need to perform processing 
-of the received data. Just need to put tarball in our storage and generates metadata.
-Metadata filename is tarball filename with `.metadata` suffix.
+of the received data. Just need to put tarball in our storage and generate metadata.
+Metadata filename is tarball filename with `.metadata` postfix.
 
 Artipie determines the call type (package / tarball) by URL pattern:
 * /{package} - Get package call;
@@ -117,8 +179,8 @@ One more thing to keep in mind - it's not required to have existing package meta
 to process this call.
 
 ### Package/tarball not found
-If adapter is unable to find the package neither it's own storage, not remote registry
-it returns HTTP 404 answer:
+If adapter is unable to find the package neither in it's own storage, nor in the 
+remote registry, it returns HTTP 404 answer:
 ```http request
 HTTP/1.1 404 Not Found
 Date: Thu, 02 Apr 2020 13:54:30 GMT
@@ -159,13 +221,13 @@ response without remote repository interaction.
 
 Naive approach to proxy adapter - to call remote repository in synchronous way. Requests
 themselves can be handled asynchronously, but whole interaction is synchronous. It means
-that the only way to know about remote repository unavailability is to wait until it called.
-The alternative is creation of asynchronous health-checker. Or, maybe, asynchronous task
-that starts after first failed attempt to interact with repository. 
+that the only way to know about remote repository unavailability is to wait until it is 
+called. The alternative is to create asynchronous health-checker. Or, maybe, asynchronous 
+task that starts after first failed attempt to interact with repository. 
 
 ### Pre-fetching latest version
 
-If NPM requests artifact in the first time and adapter does not find the package in 
+If NPM requests artifact for the first time and adapter does not find the package in 
 the cache, it will download metadata from the remote repository. Then adapter sends
 response to NPM and NPM create new requests to download specific version. But in the most
 cases, it will be the latest version. And we can start to download it before NPM client

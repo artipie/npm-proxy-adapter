@@ -30,7 +30,7 @@ import com.artipie.asto.Storage;
 import com.artipie.asto.fs.RxFile;
 import com.artipie.asto.rx.RxStorage;
 import com.artipie.asto.rx.RxStorageWrapper;
-import com.artipie.npm.proxy.json.PackageJsonTransformer;
+import com.artipie.npm.proxy.json.CachedPackage;
 import com.artipie.npm.proxy.model.NpmAsset;
 import com.artipie.npm.proxy.model.NpmPackage;
 import com.jcabi.log.Logger;
@@ -126,7 +126,7 @@ public class NpmProxy {
                             this.storage.save(
                                 key,
                                 new Content.From(
-                                    NpmProxy.internalFormat(response, pkg)
+                                    new CachedPackage(response.bodyAsString(), pkg).value()
                                         .getBytes(StandardCharsets.UTF_8)
                                 )
                             ),
@@ -312,16 +312,6 @@ public class NpmProxy {
         request.setPort(this.settings.port());
         request.setHost(this.settings.host());
         return request;
-    }
-
-    /**
-     * Transform original package metadata to internal adapter format.
-     * @param response Remote repository reponse
-     * @param pkg Package name
-     * @return Internal adapter metadata
-     */
-    private static String internalFormat(final HttpResponse<Buffer> response, final String pkg) {
-        return PackageJsonTransformer.transformOriginal(response.bodyAsString(), pkg);
     }
 
     /**
