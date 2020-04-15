@@ -91,6 +91,11 @@ final class NpmProxyTest {
      */
     private Storage storage;
 
+    /**
+     * Client Vertx instance.
+     */
+    private Vertx cvertx;
+
     @Test
     public void getsPackage(final VertxTestContext context)
         throws ParseException, IOException, JSONException {
@@ -194,12 +199,13 @@ final class NpmProxyTest {
     }
 
     @BeforeEach
-    void setUp(final Vertx vertx, final VertxTestContext context)
+    void setUp(final Vertx svertx, final VertxTestContext context)
         throws IOException, InterruptedException {
-        prepareServer(vertx, context);
+        prepareServer(svertx, context);
+        this.cvertx = Vertx.vertx();
         this.storage = new InMemoryStorage();
         this.npm = new NpmProxy(
-            new NpmProxySettings(defaultConfig()), Vertx.vertx(), this.storage
+            new NpmProxySettings(defaultConfig()), this.cvertx, this.storage
         );
         MatcherAssert.assertThat(
             "Server was not started",
@@ -210,6 +216,7 @@ final class NpmProxyTest {
     @AfterEach
     void tearDown() {
         this.npm.close();
+        this.cvertx.close();
     }
 
     private static HttpServer prepareServer(
@@ -295,7 +302,7 @@ final class NpmProxyTest {
         }
 
         @BeforeEach
-        void setUp(final Vertx vertx, final VertxTestContext context) {
+        void setUp(final Vertx svertx, final VertxTestContext context) {
             MatcherAssert.assertThat(
                 "Package is null",
                 NpmProxyTest.this.npm.getPackage("asdas").blockingGet() != null
@@ -305,7 +312,7 @@ final class NpmProxyTest {
                 NpmProxyTest.this.npm.getAsset("asdas/-/asdas-1.0.0.tgz").blockingGet() != null
             );
             context.completeNow();
-            vertx.close();
+            svertx.close();
         }
     }
 }
