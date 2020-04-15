@@ -36,9 +36,9 @@ import com.artipie.npm.proxy.NpmProxy;
 import com.jcabi.log.Logger;
 import hu.akarnokd.rxjava2.interop.SingleInterop;
 import java.nio.ByteBuffer;
-import java.util.Arrays;
 import java.util.Map;
 import java.util.regex.Pattern;
+import org.cactoos.list.ListOf;
 import org.cactoos.map.MapEntry;
 import org.reactivestreams.Publisher;
 
@@ -88,7 +88,7 @@ public final class DownloadAssetSlice implements Slice {
                                 asset.dataPublisher()
                             )
                         ),
-                        Arrays.asList(
+                        new ListOf<Map.Entry<String, String>>(
                             new MapEntry<>("Content-Type", asset.contentType()),
                             new MapEntry<>("Last-Modified", asset.lastModified())
                         )

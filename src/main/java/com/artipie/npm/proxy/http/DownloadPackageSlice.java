@@ -37,11 +37,11 @@ import com.artipie.npm.proxy.json.ClientPackage;
 import com.jcabi.log.Logger;
 import hu.akarnokd.rxjava2.interop.SingleInterop;
 import java.nio.ByteBuffer;
-import java.util.Arrays;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.StreamSupport;
+import org.cactoos.list.ListOf;
 import org.cactoos.map.MapEntry;
 import org.reactivestreams.Publisher;
 
@@ -99,7 +99,7 @@ public final class DownloadPackageSlice implements Slice {
                                     .getBytes()
                             )
                         ),
-                        Arrays.asList(
+                        new ListOf<Map.Entry<String, String>>(
                             new MapEntry<>("Content-Type", "application/json"),
                             new MapEntry<>("Last-Modified", pkg.lastModified())
                         )
