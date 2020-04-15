@@ -45,6 +45,7 @@ import org.apache.commons.io.IOUtils;
 import org.hamcrest.MatcherAssert;
 import org.hamcrest.core.IsEqual;
 import org.json.JSONException;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -198,12 +199,17 @@ final class NpmProxyTest {
         prepareServer(vertx, context);
         this.storage = new InMemoryStorage();
         this.npm = new NpmProxy(
-            new NpmProxySettings(defaultConfig()), vertx, this.storage
+            new NpmProxySettings(defaultConfig()), Vertx.vertx(), this.storage
         );
         MatcherAssert.assertThat(
             "Server was not started",
             context.awaitCompletion(1, TimeUnit.SECONDS)
         );
+    }
+
+    @AfterEach
+    void tearDown() {
+        this.npm.close();
     }
 
     private static HttpServer prepareServer(
