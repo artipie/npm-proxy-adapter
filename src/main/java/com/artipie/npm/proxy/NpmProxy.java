@@ -208,9 +208,9 @@ public class NpmProxy {
                                         }
                                     }
                                 )
-                                .onErrorResumeNext(Maybe.empty())
-                                .doOnTerminate(tmp::delete)
-                        );
+                        ).onErrorResumeNext(
+                            Maybe.empty()
+                        ).doOnTerminate(tmp::delete);
                     }
                 }
             );
