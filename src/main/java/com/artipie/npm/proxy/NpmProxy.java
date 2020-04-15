@@ -44,7 +44,6 @@ import io.vertx.core.http.RequestOptions;
 import io.vertx.ext.web.client.WebClientOptions;
 import io.vertx.reactivex.core.Vertx;
 import io.vertx.reactivex.core.buffer.Buffer;
-import io.vertx.reactivex.core.file.AsyncFile;
 import io.vertx.reactivex.ext.web.client.HttpResponse;
 import io.vertx.reactivex.ext.web.client.WebClient;
 import io.vertx.reactivex.ext.web.codec.BodyCodec;
@@ -170,45 +169,48 @@ public class NpmProxy {
                     } else {
                         final RequestOptions request = this.buildRequest(path);
                         final File tmp = Files.createTempFile("npm-asset-", ".tmp").toFile();
-                        final AsyncFile asyncfile = this.vertx.fileSystem().openBlocking(
+                        return this.vertx.fileSystem().rxOpen(
                             tmp.getAbsolutePath(),
                             new OpenOptions().setSync(true).setTruncateExisting(true)
-                        );
-                        return this.client.request(HttpMethod.GET, request)
-                            .as(BodyCodec.pipe(asyncfile))
-                            .rxSend().flatMapMaybe(
-                                response -> {
-                                    // @checkstyle MagicNumberCheck (1 line)
-                                    if (response.statusCode() == 200) {
-                                        return Completable.concatArray(
-                                            this.storage.save(
-                                                key,
-                                                new Content.From(
-                                                    new RxFile(
-                                                        tmp.toPath(),
-                                                        this.vertx.fileSystem()
-                                                    ).flow()
+                        ).flatMapMaybe(
+                            asyncfile -> this.client.request(HttpMethod.GET, request)
+                                .as(BodyCodec.pipe(asyncfile))
+                                .rxSend().flatMapMaybe(
+                                    response -> {
+                                        // @checkstyle MagicNumberCheck (1 line)
+                                        if (response.statusCode() == 200) {
+                                            return Completable.concatArray(
+                                                this.storage.save(
+                                                    key,
+                                                    new Content.From(
+                                                        new RxFile(
+                                                            tmp.toPath(),
+                                                            this.vertx.fileSystem()
+                                                        ).flow()
+                                                    )
+                                                ),
+                                                this.storage.save(
+                                                    new Key.From(
+                                                        String.format("%s.metadata", path)
+                                                    ),
+                                                    new Content.From(
+                                                        NpmProxy.assetMetadata(response)
+                                                            .getBytes(StandardCharsets.UTF_8)
+                                                    )
                                                 )
-                                            ),
-                                            this.storage.save(
-                                                new Key.From(String.format("%s.metadata", path)),
-                                                new Content.From(
-                                                    NpmProxy.assetMetadata(response)
-                                                        .getBytes(StandardCharsets.UTF_8)
+                                            ).andThen(
+                                                Maybe.defer(
+                                                    () -> this.readAssetFromStorage(path).toMaybe()
                                                 )
-                                            )
-                                        ).andThen(
-                                            Maybe.defer(
-                                                () -> this.readAssetFromStorage(path).toMaybe()
-                                            )
-                                        );
-                                    } else {
-                                        return Maybe.empty();
+                                            );
+                                        } else {
+                                            return Maybe.empty();
+                                        }
                                     }
-                                }
-                            )
-                            .onErrorResumeNext(Maybe.empty())
-                            .doOnTerminate(tmp::delete);
+                                )
+                                .onErrorResumeNext(Maybe.empty())
+                                .doOnTerminate(tmp::delete)
+                        );
                     }
                 }
             );
