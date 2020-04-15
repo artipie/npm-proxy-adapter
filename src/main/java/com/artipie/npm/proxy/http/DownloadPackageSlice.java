@@ -84,7 +84,7 @@ public final class DownloadPackageSlice implements Slice {
         final Matcher matcher = DownloadPackageSlice.PATH_PATTERN
             .matcher(new RequestLineFrom(line).uri().getPath());
         if (!matcher.matches()) {
-            return RsProvider.notFound();
+            return new RsNotFound();
         }
         final String name = matcher.group(1);
         Logger.debug(DownloadPackageSlice.class, "Determined package name is: %s", name);
@@ -104,7 +104,7 @@ public final class DownloadPackageSlice implements Slice {
                             new MapEntry<>("Last-Modified", pkg.lastModified())
                         )
                     )
-                ).toSingle(RsProvider.notFound())
+                ).toSingle(new RsNotFound())
                 .to(SingleInterop.get())
         );
     }

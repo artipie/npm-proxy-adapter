@@ -69,7 +69,7 @@ public final class NpmProxySlice implements Slice {
             new SliceRoute.Path(
                 RtRule.FALLBACK,
                 new SliceSimple(
-                    RsProvider.notFound()
+                    new RsNotFound()
                 )
             )
         );

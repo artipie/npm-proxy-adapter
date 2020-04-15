@@ -94,7 +94,7 @@ public final class DownloadAssetSlice implements Slice {
                         )
                     )
                 )
-                .toSingle(RsProvider.notFound())
+                .toSingle(new RsNotFound())
                 .to(SingleInterop.get())
         );
     }

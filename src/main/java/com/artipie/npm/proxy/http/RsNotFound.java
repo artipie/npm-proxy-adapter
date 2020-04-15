@@ -24,37 +24,24 @@
 package com.artipie.npm.proxy.http;
 
 import com.artipie.asto.Content;
+import com.artipie.http.Connection;
 import com.artipie.http.Response;
 import com.artipie.http.rs.RsStatus;
-import com.artipie.http.rs.RsWithBody;
-import com.artipie.http.rs.RsWithHeaders;
-import com.artipie.http.rs.RsWithStatus;
-import java.util.Collections;
+import java.util.concurrent.CompletionStage;
+import org.cactoos.list.ListOf;
 import org.cactoos.map.MapEntry;
 
 /**
- * Utility class for adapter static responses.
+ * Standard HTTP 404 response for NPM adapter.
  * @since 0.1
  */
-@SuppressWarnings("PMD.ProhibitPublicStaticMethods")
-public final class RsProvider {
-    /**
-     * Ctor.
-     */
-    private RsProvider() {
-    }
-
-    /**
-     * Generate HTTP 404 Not found response.
-     * @return HTTP 404 Not found response
-     */
-    public static Response notFound() {
-        return new RsWithHeaders(
-            new RsWithBody(
-                new RsWithStatus(RsStatus.NOT_FOUND),
-                new Content.From("{\"error\" : \"not found\"}".getBytes())
-            ),
-            Collections.singleton(new MapEntry<>("Content-Type", "application/json"))
+public final class RsNotFound implements Response {
+    @Override
+    public CompletionStage<Void> send(final Connection connection) {
+        return connection.accept(
+            RsStatus.NOT_FOUND,
+            new ListOf<>(new MapEntry<>("Content-Type", "application/json")),
+            new Content.From("{\"error\" : \"not found\"}".getBytes())
         );
     }
 }
