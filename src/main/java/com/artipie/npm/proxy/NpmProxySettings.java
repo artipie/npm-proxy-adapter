@@ -46,6 +46,9 @@ public class NpmProxySettings {
     /**
      * SSL enabled or disabled on the remote repository.
      * @return SSL status of the remote repository
+     * @todo #1:30m Connection URL should be represented by one property in the underlying config.
+     *  Replace ssl, host, port and path props with one - url.
+     *  Web clients should used getAbs method with it
      */
     public boolean ssl() {
         return this.delegate.getBoolean("ssl");

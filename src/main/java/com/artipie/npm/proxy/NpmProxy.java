@@ -41,6 +41,7 @@ import io.reactivex.Single;
 import io.vertx.core.file.OpenOptions;
 import io.vertx.core.http.HttpMethod;
 import io.vertx.core.http.RequestOptions;
+import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.client.WebClientOptions;
 import io.vertx.reactivex.core.Vertx;
 import io.vertx.reactivex.core.buffer.Buffer;
@@ -50,15 +51,14 @@ import io.vertx.reactivex.ext.web.codec.BodyCodec;
 import java.io.File;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
-import net.minidev.json.JSONObject;
-import net.minidev.json.JSONValue;
-import net.minidev.json.parser.JSONParser;
 import org.apache.commons.lang3.StringUtils;
 
 /**
  * NPM Proxy.
  * @since 0.1
  * @checkstyle ClassDataAbstractionCouplingCheck (500 lines)
+ * @todo #1:90m Extract storage logic into separate class
+ * Split this class to smaller parts. Storage logic can be extracted.
  */
 @SuppressWarnings("PMD.AvoidDuplicateLiterals")
 public class NpmProxy {
@@ -261,13 +261,12 @@ public class NpmProxy {
                     .map(Concatenation::new).flatMap(Concatenation::single)
                     .map(metadata -> new String(metadata.array(), StandardCharsets.UTF_8))
                     .map(
-                        metadata -> new JSONParser(JSONParser.DEFAULT_PERMISSIVE_MODE)
-                            .parse(metadata, JSONObject.class)
+                        JsonObject::new
                     ),
                 (content, metadata) ->
                     new NpmPackage(
                         new String(content.array(), StandardCharsets.UTF_8),
-                        metadata.getAsString("last-modified")
+                        metadata.getString("last-modified")
                     )
             );
     }
@@ -284,14 +283,13 @@ public class NpmProxy {
                     .map(Concatenation::new).flatMap(Concatenation::single)
                     .map(metadata -> new String(metadata.array(), StandardCharsets.UTF_8))
                     .map(
-                        metadata -> new JSONParser(JSONParser.DEFAULT_PERMISSIVE_MODE)
-                            .parse(metadata, JSONObject.class)
+                        JsonObject::new
                     ),
                 (content, metadata) ->
                     new NpmAsset(
                         content,
-                        metadata.getAsString("last-modified"),
-                        metadata.getAsString("content-type")
+                        metadata.getString("last-modified"),
+                        metadata.getString("content-type")
                     )
             );
     }
@@ -322,9 +320,9 @@ public class NpmProxy {
      * @return Additional adapter metadata for package
      */
     private static String packageMetadata(final HttpResponse<Buffer> response) {
-        final JSONObject json = new JSONObject();
+        final JsonObject json = new JsonObject();
         json.put("last-modified", response.getHeader("Last-Modified"));
-        return json.toJSONString();
+        return json.encode();
     }
 
     /**
@@ -333,10 +331,10 @@ public class NpmProxy {
      * @return Additional adapter metadata for package
      */
     private static String assetMetadata(final HttpResponse<Void> response) {
-        final JSONObject json = new JSONObject();
+        final JsonObject json = new JsonObject();
         json.put("last-modified", response.getHeader("Last-Modified"));
-        json.put("content-type", JSONValue.parse(response.getHeader("Content-Type"), String.class));
-        return json.toJSONString();
+        json.put("content-type", response.getHeader("Content-Type"));
+        return json.encode();
     }
 
     /**

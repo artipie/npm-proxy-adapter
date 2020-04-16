@@ -42,7 +42,7 @@ public class CachedContentTest {
     @Test
     public void getsValue() throws IOException {
         final String original = IOUtils.resourceToString(
-            "/original.json",
+            "/json/original.json",
             StandardCharsets.UTF_8
         );
         final String transformed = new CachedPackage(original, "asdas").value();

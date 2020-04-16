@@ -42,7 +42,7 @@ public class ClientContentTest {
     @Test
     public void getsValue() throws IOException {
         final String cached = IOUtils.resourceToString(
-            "/cached.json",
+            "/json/cached.json",
             StandardCharsets.UTF_8
         );
         final String transformed = new ClientPackage(cached, "http://localhost").value();

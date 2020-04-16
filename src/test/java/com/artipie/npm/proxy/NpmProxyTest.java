@@ -30,16 +30,15 @@ import com.artipie.asto.blocking.BlockingStorage;
 import com.artipie.asto.memory.InMemoryStorage;
 import com.artipie.npm.proxy.model.NpmAsset;
 import com.artipie.npm.proxy.model.NpmPackage;
+import io.vertx.core.json.JsonObject;
 import io.vertx.junit5.VertxExtension;
 import io.vertx.junit5.VertxTestContext;
 import io.vertx.reactivex.core.Vertx;
 import io.vertx.reactivex.core.http.HttpServer;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
-import net.minidev.json.JSONObject;
-import net.minidev.json.parser.JSONParser;
-import net.minidev.json.parser.ParseException;
 import org.apache.commons.configuration2.BaseConfiguration;
 import org.apache.commons.io.IOUtils;
 import org.hamcrest.MatcherAssert;
@@ -92,13 +91,13 @@ final class NpmProxyTest {
     private Storage storage;
 
     /**
-     * Client Vertx instance.
+     * Http Server instance.
      */
-    private Vertx cvertx;
+    private HttpServer server;
 
     @Test
     public void getsPackage(final VertxTestContext context)
-        throws ParseException, IOException, JSONException {
+        throws IOException, JSONException {
         final NpmPackage pkg = this.npm.getPackage("asdas").blockingGet();
         context.completeNow();
         MatcherAssert.assertThat("Package is null", pkg != null);
@@ -117,7 +116,7 @@ final class NpmProxyTest {
         );
         JSONAssert.assertEquals(
             IOUtils.resourceToString(
-                "/cached.json",
+                "/json/cached.json",
                 StandardCharsets.UTF_8
             ),
             cached,
@@ -129,10 +128,9 @@ final class NpmProxyTest {
             StandardCharsets.UTF_8
         );
         MatcherAssert.assertThat("Metadata is null", metadata != null);
-        final JSONObject json = new JSONParser(JSONParser.DEFAULT_PERMISSIVE_MODE)
-            .parse(metadata, JSONObject.class);
+        final JsonObject json = new JsonObject(metadata);
         MatcherAssert.assertThat(
-            json.getAsString("last-modified"),
+            json.getString("last-modified"),
             new IsEqual<>(NpmProxyTest.DEF_LAST_MODIFIED)
         );
     }
@@ -147,7 +145,7 @@ final class NpmProxyTest {
     }
 
     @Test
-    public void getsAsset(final VertxTestContext context) throws ParseException {
+    public void getsAsset(final VertxTestContext context) {
         final NpmAsset asset = this.npm.getAsset("asdas/-/asdas-1.0.0.tgz").blockingGet();
         context.completeNow();
         MatcherAssert.assertThat("Asset is null", asset != null);
@@ -177,14 +175,13 @@ final class NpmProxyTest {
             StandardCharsets.UTF_8
         );
         MatcherAssert.assertThat("Metadata is null", metadata != null);
-        final JSONObject json = new JSONParser(JSONParser.DEFAULT_PERMISSIVE_MODE)
-            .parse(metadata, JSONObject.class);
+        final JsonObject json = new JsonObject(metadata);
         MatcherAssert.assertThat(
-            json.getAsString("last-modified"),
+            json.getString("last-modified"),
             new IsEqual<>(NpmProxyTest.DEF_LAST_MODIFIED)
         );
         MatcherAssert.assertThat(
-            json.getAsString("content-type"),
+            json.getString("content-type"),
             new IsEqual<>(NpmProxyTest.DEF_CONTENT_TYPE)
         );
     }
@@ -199,13 +196,12 @@ final class NpmProxyTest {
     }
 
     @BeforeEach
-    void setUp(final Vertx svertx, final VertxTestContext context)
+    void setUp(final Vertx vertx, final VertxTestContext context)
         throws IOException, InterruptedException {
-        prepareServer(svertx, context);
-        this.cvertx = Vertx.vertx();
+        this.server = prepareServer(vertx, context);
         this.storage = new InMemoryStorage();
         this.npm = new NpmProxy(
-            new NpmProxySettings(defaultConfig()), this.cvertx, this.storage
+            new NpmProxySettings(defaultConfig()), vertx, this.storage
         );
         MatcherAssert.assertThat(
             "Server was not started",
@@ -216,14 +212,13 @@ final class NpmProxyTest {
     @AfterEach
     void tearDown() {
         this.npm.close();
-        this.cvertx.close();
     }
 
     private static HttpServer prepareServer(
         final Vertx vertx,
         final VertxTestContext context) throws IOException {
         final String original = IOUtils.resourceToString(
-            "/original.json",
+            "/json/original.json",
             StandardCharsets.UTF_8
         );
         return vertx.createHttpServer().requestHandler(
@@ -302,7 +297,7 @@ final class NpmProxyTest {
         }
 
         @BeforeEach
-        void setUp(final Vertx svertx, final VertxTestContext context) {
+        void setUp(final VertxTestContext context) throws InterruptedException {
             MatcherAssert.assertThat(
                 "Package is null",
                 NpmProxyTest.this.npm.getPackage("asdas").blockingGet() != null
@@ -312,7 +307,9 @@ final class NpmProxyTest {
                 NpmProxyTest.this.npm.getAsset("asdas/-/asdas-1.0.0.tgz").blockingGet() != null
             );
             context.completeNow();
-            svertx.close();
+            final CountDownLatch latch = new CountDownLatch(1);
+            NpmProxyTest.this.server.close(unused -> latch.countDown());
+            latch.await();
         }
     }
 }

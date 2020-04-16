@@ -77,6 +77,8 @@ public final class NpmProxyITCase {
 
     /**
      * Mock server test container.
+     * @todo #1:120m Use real NPM repo instead of mocks
+     * Take a look at https://github.com/verdaccio/verdaccio for example
      */
     @org.testcontainers.junit.jupiter.Container
     private final MockServerContainer mockctner = new MockServerContainer();
@@ -201,7 +203,7 @@ public final class NpmProxyITCase {
                 .withHeader("Content-Type", "application/json")
                 .withBody(
                     IOUtils.resourceToString(
-                        "/original.json",
+                        "/json/original.json",
                         StandardCharsets.UTF_8
                     ),
                     MediaType.JSON_UTF_8
@@ -219,7 +221,7 @@ public final class NpmProxyITCase {
                 .withHeader("Content-Type", "application/octet-stream")
                 .withBody(
                     BinaryBody.binary(
-                        IOUtils.resourceToByteArray("/asdas-1.0.0.tgz")
+                        IOUtils.resourceToByteArray("/binaries/asdas-1.0.0.tgz")
                     )
                 )
         );
