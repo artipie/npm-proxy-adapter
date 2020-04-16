@@ -77,8 +77,8 @@ public final class NpmProxyITCase {
 
     /**
      * Mock server test container.
-     * @todo #1:120m Use real NPM repo instead of mocks
-     * Take a look at https://github.com/verdaccio/verdaccio for example
+     * @todo #1:120m Use real NPM repo instead of mocks.
+     *  Take a look at https://github.com/verdaccio/verdaccio for example
      */
     @org.testcontainers.junit.jupiter.Container
     private final MockServerContainer mockctner = new MockServerContainer();

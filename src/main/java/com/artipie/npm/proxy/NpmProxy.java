@@ -58,7 +58,7 @@ import org.apache.commons.lang3.StringUtils;
  * @since 0.1
  * @checkstyle ClassDataAbstractionCouplingCheck (500 lines)
  * @todo #1:90m Extract storage logic into separate class
- * Split this class to smaller parts. Storage logic can be extracted.
+ *  Split this class to smaller parts. Storage logic can be extracted.
  */
 @SuppressWarnings("PMD.AvoidDuplicateLiterals")
 public class NpmProxy {
