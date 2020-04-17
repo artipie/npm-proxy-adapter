@@ -45,9 +45,9 @@ public final class NpmProxyConfig {
 
     /**
      * Get remote repository base URL.
-     * @return remote repository base URL
+     * @return Remote repository base URL
      */
     public String url() {
-        return yaml.string("remote-url");
+        return this.yaml.string("remote-url");
     }
 }
