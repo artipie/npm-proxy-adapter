@@ -39,8 +39,6 @@ import io.reactivex.Maybe;
 import io.reactivex.MaybeSource;
 import io.reactivex.Single;
 import io.vertx.core.file.OpenOptions;
-import io.vertx.core.http.HttpMethod;
-import io.vertx.core.http.RequestOptions;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.client.WebClientOptions;
 import io.vertx.reactivex.core.Vertx;
@@ -51,7 +49,6 @@ import io.vertx.reactivex.ext.web.codec.BodyCodec;
 import java.io.File;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
-import org.apache.commons.lang3.StringUtils;
 
 /**
  * NPM Proxy.
@@ -73,9 +70,9 @@ public class NpmProxy {
     private static final int REQUEST_TIMEOUT = 5_000;
 
     /**
-     * The settings.
+     * NPM Proxy config.
      */
-    private final NpmProxySettings settings;
+    private final NpmProxyConfig config;
 
     /**
      * The Vertx instance.
@@ -94,12 +91,12 @@ public class NpmProxy {
 
     /**
      * Ctor.
-     * @param settings Adapter settings
+     * @param config NPM Proxy configuration
      * @param vertx Vertx instance
      * @param storage Adapter storage
      */
-    public NpmProxy(final NpmProxySettings settings, final Vertx vertx, final Storage storage) {
-        this.settings = settings;
+    public NpmProxy(final NpmProxyConfig config, final Vertx vertx, final Storage storage) {
+        this.config = config;
         this.vertx = vertx;
         this.storage = new RxStorageWrapper(storage);
         this.client =  WebClient.create(vertx, NpmProxy.defaultWebClientOptions());
@@ -113,8 +110,7 @@ public class NpmProxy {
      */
     public Maybe<NpmPackage> getPackage(final String pkg) {
         final Key key = new Key.From(pkg, "package.json");
-        final RequestOptions request = this.buildRequest(pkg);
-        return this.client.request(HttpMethod.GET, request)
+        return this.client.getAbs(String.format("%s/%s", this.config.url(), pkg))
             .timeout(NpmProxy.REQUEST_TIMEOUT)
             .rxSend()
             .flatMapMaybe(
@@ -167,14 +163,14 @@ public class NpmProxy {
                     if (exists) {
                         return this.readAssetFromStorage(path).toMaybe();
                     } else {
-                        final RequestOptions request = this.buildRequest(path);
                         final File tmp = Files.createTempFile("npm-asset-", ".tmp").toFile();
                         return this.vertx.fileSystem().rxOpen(
                             tmp.getAbsolutePath(),
                             new OpenOptions().setSync(true).setTruncateExisting(true)
                         ).flatMapMaybe(
-                            asyncfile -> this.client.request(HttpMethod.GET, request)
-                                .as(BodyCodec.pipe(asyncfile))
+                            asyncfile -> this.client.getAbs(
+                                String.format("%s/%s", this.config.url(), path)
+                            ).as(BodyCodec.pipe(asyncfile))
                                 .rxSend().flatMapMaybe(
                                     response -> {
                                         // @checkstyle MagicNumberCheck (1 line)
@@ -292,26 +288,6 @@ public class NpmProxy {
                         metadata.getString("content-type")
                     )
             );
-    }
-
-    /**
-     * Build request to remote repository.
-     * @param path Remote repository path
-     * @return Request to execute
-     */
-    private RequestOptions buildRequest(final String path) {
-        final RequestOptions request = new RequestOptions();
-        final String uri;
-        if (StringUtils.isEmpty(this.settings.path())) {
-            uri = String.format("/%s", path);
-        } else {
-            uri = String.format("/%s/%s", this.settings.path(), path);
-        }
-        request.setURI(uri);
-        request.setSsl(this.settings.ssl());
-        request.setPort(this.settings.port());
-        request.setHost(this.settings.host());
-        return request;
     }
 
     /**

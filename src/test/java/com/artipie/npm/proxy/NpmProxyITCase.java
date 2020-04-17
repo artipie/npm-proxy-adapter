@@ -23,6 +23,8 @@
  */
 package com.artipie.npm.proxy;
 
+import com.amihaiemil.eoyaml.Yaml;
+import com.amihaiemil.eoyaml.YamlMapping;
 import com.artipie.asto.Storage;
 import com.artipie.asto.memory.InMemoryStorage;
 import com.artipie.npm.proxy.http.NpmProxySlice;
@@ -32,7 +34,6 @@ import io.vertx.reactivex.core.Vertx;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
-import org.apache.commons.configuration2.BaseConfiguration;
 import org.apache.commons.io.IOUtils;
 import org.hamcrest.MatcherAssert;
 import org.hamcrest.core.AllOf;
@@ -166,13 +167,15 @@ public final class NpmProxyITCase {
     void setUp() {
         final String address = this.mockctner.getContainerIpAddress();
         final Integer port = this.mockctner.getFirstMappedPort();
-        final BaseConfiguration config = new BaseConfiguration();
-        config.setProperty("ssl", false);
-        config.setProperty("host", address);
-        config.setProperty("port", port);
-        final NpmProxySettings settings = new NpmProxySettings(config);
         final Storage storage = new InMemoryStorage();
-        final NpmProxy npm = new NpmProxy(settings, NpmProxyITCase.VERTX, storage);
+        final YamlMapping yaml = Yaml.createYamlMappingBuilder()
+            .add("remote-url", String.format("http://%s:%d", address, port))
+            .build();
+        final NpmProxy npm = new NpmProxy(
+            new NpmProxyConfig(yaml),
+            NpmProxyITCase.VERTX,
+            storage
+        );
         final NpmProxySlice slice = new NpmProxySlice(npm);
         this.srv = new VertxSliceServer(NpmProxyITCase.VERTX, slice, NpmProxyITCase.DEF_PORT);
         this.srv.start();
