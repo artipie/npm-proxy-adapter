@@ -23,6 +23,8 @@
  */
 package com.artipie.npm.proxy;
 
+import com.amihaiemil.eoyaml.Yaml;
+import com.amihaiemil.eoyaml.YamlMapping;
 import com.artipie.asto.Concatenation;
 import com.artipie.asto.Key;
 import com.artipie.asto.Storage;
@@ -39,7 +41,6 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
-import org.apache.commons.configuration2.BaseConfiguration;
 import org.apache.commons.io.IOUtils;
 import org.hamcrest.MatcherAssert;
 import org.hamcrest.core.IsEqual;
@@ -200,8 +201,13 @@ final class NpmProxyTest {
         throws IOException, InterruptedException {
         this.server = prepareServer(vertx, context);
         this.storage = new InMemoryStorage();
+        final YamlMapping yaml = Yaml.createYamlMappingBuilder()
+            .add("remote-url", String.format("http://localhost:%d", NpmProxyTest.DEF_PORT))
+            .build();
         this.npm = new NpmProxy(
-            new NpmProxySettings(defaultConfig()), vertx, this.storage
+            new NpmProxyConfig(yaml),
+            vertx,
+            this.storage
         );
         MatcherAssert.assertThat(
             "Server was not started",
@@ -238,14 +244,6 @@ final class NpmProxyTest {
                 }
             }
         ).listen(NpmProxyTest.DEF_PORT, context.completing());
-    }
-
-    private static BaseConfiguration defaultConfig() {
-        final BaseConfiguration config = new BaseConfiguration();
-        config.setProperty("port", NpmProxyTest.DEF_PORT);
-        config.setProperty("host", "localhost");
-        config.setProperty("ssl", false);
-        return config;
     }
 
     /**

@@ -23,58 +23,31 @@
  */
 package com.artipie.npm.proxy;
 
-import org.apache.commons.configuration2.Configuration;
+import com.amihaiemil.eoyaml.YamlMapping;
 
 /**
- * NPM Proxy settings.
+ * NPM Proxy config.
  * @since 0.1
  */
-public class NpmProxySettings {
+public final class NpmProxyConfig {
     /**
-     * The delegate configuration.
+     * Custom Repository YAML configuration.
      */
-    private final Configuration delegate;
+    private final YamlMapping yaml;
 
     /**
      * Ctor.
-     * @param delegate Delegate configuration
+     * @param yaml Custom repository configuration
      */
-    NpmProxySettings(final Configuration delegate) {
-        this.delegate = delegate;
+    public NpmProxyConfig(final YamlMapping yaml) {
+        this.yaml = yaml;
     }
 
     /**
-     * SSL enabled or disabled on the remote repository.
-     * @return SSL status of the remote repository
-     * @todo #1:30m Connection URL should be represented by one property in the underlying config.
-     *  Replace ssl, host, port and path props with one - url.
-     *  Web clients should used getAbs method with it
+     * Get remote repository base URL.
+     * @return Remote repository base URL
      */
-    public boolean ssl() {
-        return this.delegate.getBoolean("ssl");
-    }
-
-    /**
-     * Remote repository host.
-     * @return Remote repository host
-     */
-    public String host() {
-        return this.delegate.getString("host");
-    }
-
-    /**
-     * Remote repository port.
-     * @return Remote repository port
-     */
-    public int port() {
-        return this.delegate.getInt("port");
-    }
-
-    /**
-     * Remote repository path for the NPM data.
-     * @return Remote repository path for the NPM data
-     */
-    public String path() {
-        return this.delegate.getString("path");
+    public String url() {
+        return this.yaml.string("remote-url");
     }
 }
