@@ -212,15 +212,15 @@ final class NpmProxyTest {
         );
     }
 
+    @AfterEach
+    void tearDown() {
+        this.npm.close();
+    }
+
     private int rndPort() throws IOException {
         try (ServerSocket socket = new ServerSocket(0)) {
             return socket.getLocalPort();
         }
-    }
-
-    @AfterEach
-    void tearDown() {
-        this.npm.close();
     }
 
     private static HttpServer prepareServer(
