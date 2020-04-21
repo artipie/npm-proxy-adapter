@@ -119,12 +119,11 @@ final class NpmProxyTest {
             cached,
             true
         );
-        MatcherAssert.assertThat(pkg.data(), new IsEqual<>(cached));
+        MatcherAssert.assertThat(pkg.content(), new IsEqual<>(cached));
         final String metadata = new String(
             bstorage.value(new Key.From("asdas/package.metadata")),
             StandardCharsets.UTF_8
         );
-        MatcherAssert.assertThat("Metadata is null", metadata != null);
         final JsonObject json = new JsonObject(metadata);
         MatcherAssert.assertThat(
             json.getString("last-modified"),

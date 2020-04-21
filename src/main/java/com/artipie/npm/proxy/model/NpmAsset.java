@@ -30,7 +30,13 @@ import org.reactivestreams.Publisher;
  * NPM Asset.
  * @since 0.1
  */
+@SuppressWarnings("PMD.AvoidFieldNameMatchingMethodName")
 public final class NpmAsset {
+    /**
+     * Asset path.
+     */
+    private final String path;
+
     /**
      * Reactive publisher for asset content.
      */
@@ -48,16 +54,28 @@ public final class NpmAsset {
 
     /**
      * Ctor.
+     * @param path Asset path
      * @param content Reactive publisher for asset content
      * @param modified Last modified date
      * @param ctype Original content type
+     * @checkstyle ParameterNumberCheck (10 lines)
      */
-    public NpmAsset(final Publisher<ByteBuffer> content,
+    public NpmAsset(final String path,
+        final Publisher<ByteBuffer> content,
         final String modified,
         final String ctype) {
+        this.path = path;
         this.content = content;
         this.modified = modified;
         this.ctype = ctype;
+    }
+
+    /**
+     * Return asset path.
+     * @return Asset path
+     */
+    public String path() {
+        return this.path;
     }
 
     /**

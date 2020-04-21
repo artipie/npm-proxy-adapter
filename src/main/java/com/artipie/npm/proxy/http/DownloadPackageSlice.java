@@ -33,7 +33,7 @@ import com.artipie.http.rs.RsWithBody;
 import com.artipie.http.rs.RsWithHeaders;
 import com.artipie.http.rs.RsWithStatus;
 import com.artipie.npm.proxy.NpmProxy;
-import com.artipie.npm.proxy.json.ClientPackage;
+import com.artipie.npm.proxy.json.ClientContent;
 import com.jcabi.log.Logger;
 import hu.akarnokd.rxjava2.interop.SingleInterop;
 import java.nio.ByteBuffer;
@@ -90,7 +90,7 @@ public final class DownloadPackageSlice implements Slice {
                         new RsWithBody(
                             new RsWithStatus(RsStatus.OK),
                             new Content.From(
-                                DownloadPackageSlice.clientFormat(pkg.data(), headers)
+                                DownloadPackageSlice.clientFormat(pkg.content(), headers)
                                     .getBytes()
                             )
                         ),
@@ -117,6 +117,6 @@ public final class DownloadPackageSlice implements Slice {
             .findAny().orElseThrow(
                 () -> new RuntimeException("Could not find Host header in request")
             ).getValue();
-        return new ClientPackage(data, String.format("http://%s", host)).value();
+        return new ClientContent(data, String.format("http://%s", host)).value();
     }
 }

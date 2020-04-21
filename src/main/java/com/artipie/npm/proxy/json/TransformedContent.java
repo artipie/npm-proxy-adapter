@@ -34,7 +34,7 @@ import net.minidev.json.JSONArray;
  *
  * @since 0.1
  */
-public abstract class TransformedPackage {
+public abstract class TransformedContent {
     /**
      * Placeholder for asset links base URL.
      */
@@ -43,14 +43,14 @@ public abstract class TransformedPackage {
     /**
      * Original package content.
      */
-    private final String content;
+    private final String data;
 
     /**
      * Ctor.
-     * @param content Package content to be transformed
+     * @param data Package content to be transformed
      */
-    public TransformedPackage(final String content) {
-        this.content = content;
+    public TransformedContent(final String data) {
+        this.data = data;
     }
 
     /**
@@ -73,9 +73,9 @@ public abstract class TransformedPackage {
      * @return Transformed JSON
      */
     private String transformAssetRefs() {
-        final DocumentContext json = JsonPath.parse(this.content);
+        final DocumentContext json = JsonPath.parse(this.data);
         final Configuration conf = Configuration.builder().options(Option.AS_PATH_LIST).build();
-        final DocumentContext ctx = JsonPath.parse(this.content, conf);
+        final DocumentContext ctx = JsonPath.parse(this.data, conf);
         ctx.read("$.versions.[*].dist.tarball", JSONArray.class).stream()
             .map(String.class::cast).forEach(
                 path -> {

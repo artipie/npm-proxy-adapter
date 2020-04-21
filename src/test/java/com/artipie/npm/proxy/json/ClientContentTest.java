@@ -45,7 +45,7 @@ public class ClientContentTest {
             "/json/cached.json",
             StandardCharsets.UTF_8
         );
-        final String transformed = new ClientPackage(cached, "http://localhost").value();
+        final String transformed = new ClientContent(cached, "http://localhost").value();
         final DocumentContext json = JsonPath.parse(transformed);
         final JSONArray refs = json.read("$.versions.[*].dist.tarball", JSONArray.class);
         MatcherAssert.assertThat("Could not find asset references", refs.size() > 0);

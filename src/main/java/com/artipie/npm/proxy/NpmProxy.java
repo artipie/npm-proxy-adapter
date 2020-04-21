@@ -23,31 +23,20 @@
  */
 package com.artipie.npm.proxy;
 
-import com.artipie.asto.Concatenation;
-import com.artipie.asto.Content;
-import com.artipie.asto.Key;
 import com.artipie.asto.Storage;
 import com.artipie.asto.fs.RxFile;
-import com.artipie.asto.rx.RxStorage;
 import com.artipie.asto.rx.RxStorageWrapper;
-import com.artipie.npm.proxy.json.CachedPackage;
+import com.artipie.npm.proxy.json.CachedContent;
 import com.artipie.npm.proxy.model.NpmAsset;
 import com.artipie.npm.proxy.model.NpmPackage;
 import com.jcabi.log.Logger;
-import io.reactivex.Completable;
 import io.reactivex.Maybe;
-import io.reactivex.MaybeSource;
-import io.reactivex.Single;
 import io.vertx.core.file.OpenOptions;
-import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.client.WebClientOptions;
 import io.vertx.reactivex.core.Vertx;
-import io.vertx.reactivex.core.buffer.Buffer;
-import io.vertx.reactivex.ext.web.client.HttpResponse;
 import io.vertx.reactivex.ext.web.client.WebClient;
 import io.vertx.reactivex.ext.web.codec.BodyCodec;
 import java.io.File;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 
 /**
@@ -82,7 +71,7 @@ public class NpmProxy {
     /**
      * The storage.
      */
-    private final RxStorage storage;
+    private final NpmProxyStorage storage;
 
     /**
      * Web client.
@@ -98,7 +87,7 @@ public class NpmProxy {
     public NpmProxy(final NpmProxyConfig config, final Vertx vertx, final Storage storage) {
         this.config = config;
         this.vertx = vertx;
-        this.storage = new RxStorageWrapper(storage);
+        this.storage = new NpmProxyStorage(new RxStorageWrapper(storage));
         this.client =  WebClient.create(vertx, NpmProxy.defaultWebClientOptions());
     }
 
@@ -109,7 +98,6 @@ public class NpmProxy {
      * @checkstyle ReturnCountCheck (42 lines)
      */
     public Maybe<NpmPackage> getPackage(final String pkg) {
-        final Key key = new Key.From(pkg, "package.json");
         return this.client.getAbs(String.format("%s/%s", this.config.url(), pkg))
             .timeout(NpmProxy.REQUEST_TIMEOUT)
             .rxSend()
@@ -117,24 +105,15 @@ public class NpmProxy {
                 response -> {
                     //@checkstyle MagicNumberCheck (1 line)
                     if (response.statusCode() == 200) {
-                        return Completable.concatArray(
-                            this.storage.save(
-                                key,
-                                new Content.From(
-                                    new CachedPackage(response.bodyAsString(), pkg).value()
-                                        .getBytes(StandardCharsets.UTF_8)
-                                )
-                            ),
-                            this.storage.save(
-                                new Key.From(pkg, "package.metadata"),
-                                new Content.From(
-                                    NpmProxy.packageMetadata(response)
-                                        .getBytes(StandardCharsets.UTF_8)
-                              )
+                        return this.storage.save(
+                            new NpmPackage(
+                                pkg,
+                                new CachedContent(response.bodyAsString(), pkg).value(),
+                                response.getHeader("Last-Modified")
                             )
-                        ).andThen(Maybe.defer(() -> this.readPackageFromStorage(pkg).toMaybe()));
+                        ).andThen(Maybe.defer(() -> this.storage.getPackage(pkg)));
                     } else {
-                        return this.tryLocal(pkg);
+                        return this.storage.getPackage(pkg);
                     }
                 }
             ).onErrorResumeNext(
@@ -144,7 +123,7 @@ public class NpmProxy {
                         "Error occurred when process get package call: %s",
                         throwable.getMessage()
                     );
-                    return this.tryLocal(pkg);
+                    return this.storage.getPackage(pkg);
                 }
             );
     }
@@ -153,62 +132,48 @@ public class NpmProxy {
      * Retrieve asset.
      * @param path Asset path
      * @return Asset data (cached or downloaded from remote repository)
-     * @checkstyle ReturnCountCheck (54 lines)
+     * @checkstyle ReturnCountCheck (43 lines)
      */
     public Maybe<NpmAsset> getAsset(final String path) {
-        final Key key = new Key.From(path);
-        return this.storage.exists(key)
-            .flatMapMaybe(
-                exists -> {
-                    if (exists) {
-                        return this.readAssetFromStorage(path).toMaybe();
-                    } else {
+        return this.storage.getAsset(path)
+            .switchIfEmpty(
+                Maybe.defer(
+                    () -> {
                         final File tmp = Files.createTempFile("npm-asset-", ".tmp").toFile();
                         return this.vertx.fileSystem().rxOpen(
                             tmp.getAbsolutePath(),
                             new OpenOptions().setSync(true).setTruncateExisting(true)
                         ).flatMapMaybe(
-                            asyncfile -> this.client.getAbs(
-                                String.format("%s/%s", this.config.url(), path)
-                            ).as(BodyCodec.pipe(asyncfile))
-                                .rxSend().flatMapMaybe(
+                            asyncfile ->
+                                this.client.getAbs(
+                                    String.format("%s/%s", this.config.url(), path)
+                                ).as(
+                                    BodyCodec.pipe(asyncfile)
+                                ).rxSend().flatMapMaybe(
                                     response -> {
                                         // @checkstyle MagicNumberCheck (1 line)
                                         if (response.statusCode() == 200) {
-                                            return Completable.concatArray(
-                                                this.storage.save(
-                                                    key,
-                                                    new Content.From(
-                                                        new RxFile(
-                                                            tmp.toPath(),
-                                                            this.vertx.fileSystem()
-                                                        ).flow()
-                                                    )
-                                                ),
-                                                this.storage.save(
-                                                    new Key.From(
-                                                        String.format("%s.metadata", path)
-                                                    ),
-                                                    new Content.From(
-                                                        NpmProxy.assetMetadata(response)
-                                                            .getBytes(StandardCharsets.UTF_8)
-                                                    )
+                                            return this.storage.save(
+                                                new NpmAsset(
+                                                    path,
+                                                    new RxFile(
+                                                        tmp.toPath(),
+                                                        this.vertx.fileSystem()
+                                                    ).flow(),
+                                                    response.getHeader("Last-Modified"),
+                                                    response.getHeader("Content-Type")
                                                 )
-                                            ).andThen(
-                                                Maybe.defer(
-                                                    () -> this.readAssetFromStorage(path).toMaybe()
-                                                )
-                                            );
+                                            ).andThen(this.storage.getAsset(path));
                                         } else {
                                             return Maybe.empty();
                                         }
                                     }
-                                )
-                        ).onErrorResumeNext(
-                            Maybe.empty()
-                        ).doOnTerminate(tmp::delete);
+                                ).onErrorResumeNext(
+                                    Maybe.empty()
+                                ).doOnTerminate(tmp::delete)
+                        );
                     }
-                }
+                )
             );
     }
 
@@ -217,100 +182,6 @@ public class NpmProxy {
      */
     public void close() {
         this.client.close();
-    }
-
-    /**
-     * Try to load package metadata from the cache.
-     * @param pkg Package name
-     * @return Package metadata if exists
-     * @checkstyle ReturnCountCheck (13 lines)
-     */
-    private MaybeSource<? extends NpmPackage> tryLocal(final String pkg) {
-        return this.storage.exists(new Key.From(String.format("%s/package.json", pkg)))
-            .flatMapMaybe(
-                exists -> {
-                    Logger.debug(
-                        NpmProxy.class,
-                        "Cached package '%s' exists: %b",
-                        pkg,
-                        exists
-                    );
-                    if (exists) {
-                        return this.readPackageFromStorage(pkg).toMaybe();
-                    } else {
-                        return Maybe.empty();
-                    }
-                }
-            );
-    }
-
-    /**
-     * Read package data from storage.
-     * @param pkg Package name
-     * @return Package metadata
-     */
-    private Single<NpmPackage> readPackageFromStorage(final String pkg) {
-        return this.storage.value(new Key.From(pkg, "package.json"))
-            .map(Concatenation::new).flatMap(Concatenation::single)
-            .zipWith(
-                this.storage.value(new Key.From(pkg, "package.metadata"))
-                    .map(Concatenation::new).flatMap(Concatenation::single)
-                    .map(metadata -> new String(metadata.array(), StandardCharsets.UTF_8))
-                    .map(
-                        JsonObject::new
-                    ),
-                (content, metadata) ->
-                    new NpmPackage(
-                        new String(content.array(), StandardCharsets.UTF_8),
-                        metadata.getString("last-modified")
-                    )
-            );
-    }
-
-    /**
-     * Read asset data from storage.
-     * @param path Asset path
-     * @return Asset data
-     */
-    private Single<NpmAsset> readAssetFromStorage(final String path) {
-        return this.storage.value(new Key.From(path))
-            .zipWith(
-                this.storage.value(new Key.From(String.format("%s.metadata", path)))
-                    .map(Concatenation::new).flatMap(Concatenation::single)
-                    .map(metadata -> new String(metadata.array(), StandardCharsets.UTF_8))
-                    .map(
-                        JsonObject::new
-                    ),
-                (content, metadata) ->
-                    new NpmAsset(
-                        content,
-                        metadata.getString("last-modified"),
-                        metadata.getString("content-type")
-                    )
-            );
-    }
-
-    /**
-     * Generate additional package metadata (last modified date, etc).
-     * @param response Remote repository response
-     * @return Additional adapter metadata for package
-     */
-    private static String packageMetadata(final HttpResponse<Buffer> response) {
-        final JsonObject json = new JsonObject();
-        json.put("last-modified", response.getHeader("Last-Modified"));
-        return json.encode();
-    }
-
-    /**
-     * Generate additional asset metadata (last modified date, etc).
-     * @param response Remote repository response
-     * @return Additional adapter metadata for package
-     */
-    private static String assetMetadata(final HttpResponse<Void> response) {
-        final JsonObject json = new JsonObject();
-        json.put("last-modified", response.getHeader("Last-Modified"));
-        json.put("content-type", response.getHeader("Content-Type"));
-        return json.encode();
     }
 
     /**

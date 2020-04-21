@@ -27,7 +27,13 @@ package com.artipie.npm.proxy.model;
  * NPM Package.
  * @since 0.1
  */
+@SuppressWarnings("PMD.AvoidFieldNameMatchingMethodName")
 public final class NpmPackage {
+    /**
+     * Package name.
+     */
+    private final String name;
+
     /**
      * JSON data.
      */
@@ -40,19 +46,29 @@ public final class NpmPackage {
 
     /**
      * Ctor.
+     * @param name Package name
      * @param content JSON data
      * @param modified Last modified date
      */
-    public NpmPackage(final String content, final String modified) {
+    public NpmPackage(final String name, final String content, final String modified) {
+        this.name = name;
         this.content = content;
         this.modified = modified;
+    }
+
+    /**
+     * Get package name.
+     * @return Package name
+     */
+    public String name() {
+        return this.name;
     }
 
     /**
      * Get package JSON.
      * @return Package JSON
      */
-    public String data() {
+    public String content() {
         return this.content;
     }
 
