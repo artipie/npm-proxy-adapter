@@ -32,6 +32,7 @@ import com.artipie.vertx.VertxSliceServer;
 import com.google.common.net.MediaType;
 import io.vertx.reactivex.core.Vertx;
 import java.io.IOException;
+import java.net.ServerSocket;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import org.apache.commons.io.IOUtils;
@@ -74,7 +75,7 @@ public final class NpmProxyITCase {
     /**
      * Port to listen for NPM Proxy adapter.
      */
-    private static final int DEF_PORT = 9080;
+    private static int listenPort;
 
     /**
      * Mock server test container.
@@ -96,6 +97,14 @@ public final class NpmProxyITCase {
      */
     private VertxSliceServer srv;
 
+    static {
+        try (ServerSocket socket = new ServerSocket(0)) {
+            NpmProxyITCase.listenPort = socket.getLocalPort();
+        } catch (final IOException ex) {
+            throw new IllegalStateException(ex);
+        }
+    }
+
     @Test
     public void installModule() throws IOException, InterruptedException {
         final MockServerClient mock = new MockServerClient(
@@ -107,7 +116,7 @@ public final class NpmProxyITCase {
         final Container.ExecResult result = this.npmcnter.execInContainer(
             "npm",
             "--registry",
-            "http://host.testcontainers.internal:9080",
+            String.format("http://host.testcontainers.internal:%d", NpmProxyITCase.listenPort),
             "install",
             "asdas"
         );
@@ -127,7 +136,7 @@ public final class NpmProxyITCase {
         final Container.ExecResult result = this.npmcnter.execInContainer(
             "npm",
             "--registry",
-            "http://host.testcontainers.internal:9080",
+            String.format("http://host.testcontainers.internal:%d", NpmProxyITCase.listenPort),
             "install",
             "asdas"
         );
@@ -135,7 +144,10 @@ public final class NpmProxyITCase {
         MatcherAssert.assertThat(
             result.getStderr(),
             new StringContains(
-                "Not Found - GET http://host.testcontainers.internal:9080/asdas"
+                String.format(
+                    "Not Found - GET http://host.testcontainers.internal:%d/asdas",
+                    NpmProxyITCase.listenPort
+                )
             )
         );
     }
@@ -150,7 +162,7 @@ public final class NpmProxyITCase {
         final Container.ExecResult result = this.npmcnter.execInContainer(
             "npm",
             "--registry",
-            "http://host.testcontainers.internal:9080",
+            String.format("http://host.testcontainers.internal:%d", NpmProxyITCase.listenPort),
             "install",
             "asdas"
         );
@@ -158,7 +170,11 @@ public final class NpmProxyITCase {
         MatcherAssert.assertThat(
             result.getStderr(),
             new StringContains(
-                "Not Found - GET http://host.testcontainers.internal:9080/asdas/-/asdas-1.0.0.tgz"
+                String.format(
+                    //@checkstyle LineLengthCheck (1 line)
+                    "Not Found - GET http://host.testcontainers.internal:%d/asdas/-/asdas-1.0.0.tgz",
+                    NpmProxyITCase.listenPort
+                )
             )
         );
     }
@@ -177,7 +193,7 @@ public final class NpmProxyITCase {
             storage
         );
         final NpmProxySlice slice = new NpmProxySlice(npm);
-        this.srv = new VertxSliceServer(NpmProxyITCase.VERTX, slice, NpmProxyITCase.DEF_PORT);
+        this.srv = new VertxSliceServer(NpmProxyITCase.VERTX, slice, NpmProxyITCase.listenPort);
         this.srv.start();
     }
 
@@ -188,7 +204,7 @@ public final class NpmProxyITCase {
 
     @BeforeAll
     static void prepare() {
-        Testcontainers.exposeHostPorts(NpmProxyITCase.DEF_PORT);
+        Testcontainers.exposeHostPorts(NpmProxyITCase.listenPort);
     }
 
     @AfterAll

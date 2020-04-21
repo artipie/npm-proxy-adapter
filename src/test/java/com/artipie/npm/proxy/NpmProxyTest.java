@@ -38,6 +38,7 @@ import io.vertx.junit5.VertxTestContext;
 import io.vertx.reactivex.core.Vertx;
 import io.vertx.reactivex.core.http.HttpServer;
 import java.io.IOException;
+import java.net.ServerSocket;
 import java.nio.charset.StandardCharsets;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -61,11 +62,6 @@ import org.skyscreamer.jsonassert.JSONAssert;
 @SuppressWarnings("PMD.AvoidDuplicateLiterals")
 @ExtendWith(VertxExtension.class)
 final class NpmProxyTest {
-    /**
-     * Port to listen for Mock Server.
-     */
-    private static final int DEF_PORT = 12_321;
-
     /**
      * Last modified date for both package and asset.
      */
@@ -199,10 +195,11 @@ final class NpmProxyTest {
     @BeforeEach
     void setUp(final Vertx vertx, final VertxTestContext context)
         throws IOException, InterruptedException {
-        this.server = prepareServer(vertx, context);
+        final int port = this.rndPort();
+        this.server = prepareServer(vertx, context, port);
         this.storage = new InMemoryStorage();
         final YamlMapping yaml = Yaml.createYamlMappingBuilder()
-            .add("remote-url", String.format("http://localhost:%d", NpmProxyTest.DEF_PORT))
+            .add("remote-url", String.format("http://localhost:%d", port))
             .build();
         this.npm = new NpmProxy(
             new NpmProxyConfig(yaml),
@@ -215,6 +212,12 @@ final class NpmProxyTest {
         );
     }
 
+    private int rndPort() throws IOException {
+        try (ServerSocket socket = new ServerSocket(0)) {
+            return socket.getLocalPort();
+        }
+    }
+
     @AfterEach
     void tearDown() {
         this.npm.close();
@@ -222,7 +225,8 @@ final class NpmProxyTest {
 
     private static HttpServer prepareServer(
         final Vertx vertx,
-        final VertxTestContext context) throws IOException {
+        final VertxTestContext context,
+        final int port) throws IOException {
         final String original = IOUtils.resourceToString(
             "/json/original.json",
             StandardCharsets.UTF_8
@@ -243,7 +247,7 @@ final class NpmProxyTest {
                     req.response().setStatusCode(404).end();
                 }
             }
-        ).listen(NpmProxyTest.DEF_PORT, context.completing());
+        ).listen(port, context.completing());
     }
 
     /**
