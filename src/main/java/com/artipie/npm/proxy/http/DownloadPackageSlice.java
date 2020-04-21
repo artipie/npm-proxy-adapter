@@ -76,11 +76,6 @@ public final class DownloadPackageSlice implements Slice {
     public Response response(final String line,
         final Iterable<Map.Entry<String, String>> headers,
         final Publisher<ByteBuffer> body) {
-        Logger.debug(
-            DownloadPackageSlice.class,
-            "Processing download package request for query %s",
-            line
-        );
         final Matcher matcher = DownloadPackageSlice.PATH_PATTERN
             .matcher(new RequestLineFrom(line).uri().getPath());
         if (!matcher.matches()) {

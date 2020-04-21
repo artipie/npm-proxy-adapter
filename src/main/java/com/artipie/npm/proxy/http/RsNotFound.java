@@ -25,11 +25,12 @@ package com.artipie.npm.proxy.http;
 
 import com.artipie.asto.Content;
 import com.artipie.http.Connection;
+import com.artipie.http.Headers;
 import com.artipie.http.Response;
 import com.artipie.http.rs.RsStatus;
 import java.util.Map;
 import java.util.concurrent.CompletionStage;
-import org.cactoos.list.ListOf;
+import org.cactoos.iterable.IterableOf;
 import org.cactoos.map.MapEntry;
 
 /**
@@ -41,8 +42,10 @@ public final class RsNotFound implements Response {
     public CompletionStage<Void> send(final Connection connection) {
         return connection.accept(
             RsStatus.NOT_FOUND,
-            new ListOf<Map.Entry<String, String>>(
-                new MapEntry<>("Content-Type", "application/json")
+            new Headers.From(
+                new IterableOf<Map.Entry<String, String>>(
+                    new MapEntry<>("Content-Type", "application/json")
+                )
             ),
             new Content.From("{\"error\" : \"not found\"}".getBytes())
         );

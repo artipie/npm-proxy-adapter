@@ -28,6 +28,7 @@ import com.artipie.http.Slice;
 import com.artipie.http.rq.RqMethod;
 import com.artipie.http.rt.RtRule;
 import com.artipie.http.rt.SliceRoute;
+import com.artipie.http.slice.LoggingSlice;
 import com.artipie.http.slice.SliceSimple;
 import com.artipie.npm.proxy.NpmProxy;
 import java.nio.ByteBuffer;
@@ -57,19 +58,25 @@ public final class NpmProxySlice implements Slice {
                     new RtRule.ByMethod(RqMethod.GET),
                     new RtRule.ByPath(DownloadPackageSlice.PATH_PATTERN)
                 ),
-                new DownloadPackageSlice(npm)
+                new LoggingSlice(
+                    new DownloadPackageSlice(npm)
+                )
             ),
             new SliceRoute.Path(
                 new RtRule.Multiple(
                     new RtRule.ByMethod(RqMethod.GET),
                     new RtRule.ByPath(DownloadAssetSlice.PATH_PATTERN)
                 ),
-                new DownloadAssetSlice(npm)
+                new LoggingSlice(
+                    new DownloadAssetSlice(npm)
+                )
             ),
             new SliceRoute.Path(
                 RtRule.FALLBACK,
-                new SliceSimple(
-                    new RsNotFound()
+                new LoggingSlice(
+                    new SliceSimple(
+                        new RsNotFound()
+                    )
                 )
             )
         );
