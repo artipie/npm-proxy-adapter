@@ -163,13 +163,29 @@ public class NpmProxy {
                                                     response.getHeader("Last-Modified"),
                                                     response.getHeader("Content-Type")
                                                 )
-                                            ).andThen(this.storage.getAsset(path));
+                                            ).andThen(
+                                                Maybe.defer(
+                                                    () -> this.storage.getAsset(path)
+                                                )
+                                            );
                                         } else {
+                                            Logger.debug(
+                                                this,
+                                                "Could not load asset: status code %d",
+                                                response.statusCode()
+                                            );
                                             return Maybe.empty();
                                         }
                                     }
                                 ).onErrorResumeNext(
-                                    Maybe.empty()
+                                    throwable -> {
+                                        Logger.error(
+                                            this,
+                                            "Error  occurred when process get asset call: %s",
+                                            throwable.getMessage()
+                                        );
+                                        return Maybe.empty();
+                                    }
                                 ).doOnTerminate(tmp::delete)
                         );
                     }

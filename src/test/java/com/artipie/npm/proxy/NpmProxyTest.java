@@ -26,31 +26,25 @@ package com.artipie.npm.proxy;
 import com.amihaiemil.eoyaml.Yaml;
 import com.amihaiemil.eoyaml.YamlMapping;
 import com.artipie.asto.Concatenation;
-import com.artipie.asto.Key;
-import com.artipie.asto.Storage;
-import com.artipie.asto.blocking.BlockingStorage;
 import com.artipie.asto.memory.InMemoryStorage;
 import com.artipie.npm.proxy.model.NpmAsset;
 import com.artipie.npm.proxy.model.NpmPackage;
-import io.vertx.core.json.JsonObject;
-import io.vertx.junit5.VertxExtension;
-import io.vertx.junit5.VertxTestContext;
 import io.vertx.reactivex.core.Vertx;
 import io.vertx.reactivex.core.http.HttpServer;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.nio.charset.StandardCharsets;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
 import org.apache.commons.io.IOUtils;
 import org.hamcrest.MatcherAssert;
 import org.hamcrest.core.IsEqual;
 import org.json.JSONException;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
 import org.skyscreamer.jsonassert.JSONAssert;
 
 /**
@@ -60,7 +54,6 @@ import org.skyscreamer.jsonassert.JSONAssert;
  * @checkstyle ClassDataAbstractionCouplingCheck (500 lines)
  */
 @SuppressWarnings("PMD.AvoidDuplicateLiterals")
-@ExtendWith(VertxExtension.class)
 final class NpmProxyTest {
     /**
      * Last modified date for both package and asset.
@@ -78,14 +71,14 @@ final class NpmProxyTest {
     private static final String DEF_CONTENT = "foobar";
 
     /**
+     * Vertx instance.
+     */
+    private static Vertx vertx;
+
+    /**
      * NPM Proxy instance.
      */
     private NpmProxy npm;
-
-    /**
-     * NPM Proxy storage.
-     */
-    private Storage storage;
 
     /**
      * Http Server instance.
@@ -93,58 +86,96 @@ final class NpmProxyTest {
     private HttpServer server;
 
     @Test
-    public void getsPackage(final VertxTestContext context)
+    public void getsPackage() throws IOException, JSONException {
+        final String name = "asdas";
+        final NpmPackage pkg = this.npm.getPackage(name).blockingGet();
+        this.validatePackage(pkg, name);
+    }
+
+    @Test
+    public void cannotFindPackage() {
+        final Boolean empty = this.npm.getPackage("not-found").isEmpty().blockingGet();
+        MatcherAssert.assertThat("Unexpected package found", empty);
+    }
+
+    @Test
+    public void getsAsset() {
+        final String path = "asdas/-/asdas-1.0.0.tgz";
+        final NpmAsset asset = this.npm.getAsset(path).blockingGet();
+        this.validateAsset(asset, path);
+    }
+
+    @Test
+    public void cannotFindAsset() {
+        final Boolean empty = this.npm.getAsset("not-found").isEmpty().blockingGet();
+        MatcherAssert.assertThat("Unexpected asset found", empty);
+    }
+
+    @BeforeEach
+    void setUp()
+        throws IOException, InterruptedException {
+        final int port = this.rndPort();
+        this.server = prepareServer(port);
+        final YamlMapping yaml = Yaml.createYamlMappingBuilder()
+            .add("remote-url", String.format("http://localhost:%d", port))
+            .build();
+        this.npm = new NpmProxy(
+            new NpmProxyConfig(yaml),
+            NpmProxyTest.vertx,
+            new InMemoryStorage()
+        );
+    }
+
+    @AfterEach
+    void tearDown() {
+        this.npm.close();
+        this.server.close();
+    }
+
+    @BeforeAll
+    static void prepare() {
+        NpmProxyTest.vertx = Vertx.vertx();
+    }
+
+    @AfterAll
+    static void cleanup() {
+        NpmProxyTest.vertx.close();
+    }
+
+    private int rndPort() throws IOException {
+        try (ServerSocket socket = new ServerSocket(0)) {
+            return socket.getLocalPort();
+        }
+    }
+
+    private void validatePackage(final NpmPackage pkg, final String name)
         throws IOException, JSONException {
-        final NpmPackage pkg = this.npm.getPackage("asdas").blockingGet();
-        context.completeNow();
         MatcherAssert.assertThat("Package is null", pkg != null);
+        MatcherAssert.assertThat(
+            pkg.name(),
+            new IsEqual<>(name)
+        );
         MatcherAssert.assertThat(
             pkg.lastModified(),
             new IsEqual<>(NpmProxyTest.DEF_LAST_MODIFIED)
         );
-        final BlockingStorage bstorage = new BlockingStorage(this.storage);
-        final String cached = new String(
-            bstorage.value(new Key.From("asdas/package.json")),
-            StandardCharsets.UTF_8
-        );
-        MatcherAssert.assertThat(
-            "Package content is null",
-            cached != null
-        );
         JSONAssert.assertEquals(
-            IOUtils.resourceToString(
-                "/json/cached.json",
-                StandardCharsets.UTF_8
-            ),
-            cached,
+            IOUtils.resourceToString("/json/cached.json", StandardCharsets.UTF_8),
+            pkg.content(),
             true
         );
-        MatcherAssert.assertThat(pkg.content(), new IsEqual<>(cached));
-        final String metadata = new String(
-            bstorage.value(new Key.From("asdas/package.metadata")),
-            StandardCharsets.UTF_8
-        );
-        final JsonObject json = new JsonObject(metadata);
         MatcherAssert.assertThat(
-            json.getString("last-modified"),
+            pkg.lastModified(),
             new IsEqual<>(NpmProxyTest.DEF_LAST_MODIFIED)
         );
     }
 
-    @Test
-    public void cannotFindPackage(final VertxTestContext context) {
-        MatcherAssert.assertThat(
-            "Unexpected package found",
-            this.npm.getPackage("not-found").blockingGet() == null
-        );
-        context.completeNow();
-    }
-
-    @Test
-    public void getsAsset(final VertxTestContext context) {
-        final NpmAsset asset = this.npm.getAsset("asdas/-/asdas-1.0.0.tgz").blockingGet();
-        context.completeNow();
+    private void validateAsset(final NpmAsset asset, final String path) {
         MatcherAssert.assertThat("Asset is null", asset != null);
+        MatcherAssert.assertThat(
+            asset.path(),
+            new IsEqual<>(path)
+        );
         MatcherAssert.assertThat(
             new String(
                 new Concatenation(asset.dataPublisher()).single().blockingGet().array(),
@@ -160,77 +191,16 @@ final class NpmProxyTest {
             asset.contentType(),
             new IsEqual<>(NpmProxyTest.DEF_CONTENT_TYPE)
         );
-        final BlockingStorage bstorage = new BlockingStorage(this.storage);
-        final String content = new String(
-            bstorage.value(new Key.From("asdas/-/asdas-1.0.0.tgz")),
-            StandardCharsets.UTF_8
-        );
-        MatcherAssert.assertThat(NpmProxyTest.DEF_CONTENT, new IsEqual<>(content));
-        final String metadata = new String(
-            bstorage.value(new Key.From("asdas/-/asdas-1.0.0.tgz.metadata")),
-            StandardCharsets.UTF_8
-        );
-        MatcherAssert.assertThat("Metadata is null", metadata != null);
-        final JsonObject json = new JsonObject(metadata);
-        MatcherAssert.assertThat(
-            json.getString("last-modified"),
-            new IsEqual<>(NpmProxyTest.DEF_LAST_MODIFIED)
-        );
-        MatcherAssert.assertThat(
-            json.getString("content-type"),
-            new IsEqual<>(NpmProxyTest.DEF_CONTENT_TYPE)
-        );
     }
 
-    @Test
-    public void cannotFindAsset(final VertxTestContext context) {
-        MatcherAssert.assertThat(
-            "Unexpected asset found",
-            this.npm.getAsset("not-found").blockingGet() == null
-        );
-        context.completeNow();
-    }
-
-    @BeforeEach
-    void setUp(final Vertx vertx, final VertxTestContext context)
+    private static HttpServer prepareServer(final int port)
         throws IOException, InterruptedException {
-        final int port = this.rndPort();
-        this.server = prepareServer(vertx, context, port);
-        this.storage = new InMemoryStorage();
-        final YamlMapping yaml = Yaml.createYamlMappingBuilder()
-            .add("remote-url", String.format("http://localhost:%d", port))
-            .build();
-        this.npm = new NpmProxy(
-            new NpmProxyConfig(yaml),
-            vertx,
-            this.storage
-        );
-        MatcherAssert.assertThat(
-            "Server was not started",
-            context.awaitCompletion(1, TimeUnit.SECONDS)
-        );
-    }
-
-    @AfterEach
-    void tearDown() {
-        this.npm.close();
-    }
-
-    private int rndPort() throws IOException {
-        try (ServerSocket socket = new ServerSocket(0)) {
-            return socket.getLocalPort();
-        }
-    }
-
-    private static HttpServer prepareServer(
-        final Vertx vertx,
-        final VertxTestContext context,
-        final int port) throws IOException {
         final String original = IOUtils.resourceToString(
             "/json/original.json",
             StandardCharsets.UTF_8
         );
-        return vertx.createHttpServer().requestHandler(
+        final CountDownLatch latch = new CountDownLatch(1);
+        final HttpServer server = vertx.createHttpServer().requestHandler(
             req -> {
                 if (req.path().equalsIgnoreCase("/asdas")) {
                     req.response()
@@ -246,7 +216,9 @@ final class NpmProxyTest {
                     req.response().setStatusCode(404).end();
                 }
             }
-        ).listen(port, context.completing());
+        ).listen(port, unused -> latch.countDown());
+        latch.await();
+        return server;
     }
 
     /**
@@ -257,57 +229,46 @@ final class NpmProxyTest {
     @Nested
     class CachedValues {
         @Test
-        public void getsPackage() {
-            final NpmPackage pkg = NpmProxyTest.this.npm.getPackage("asdas").blockingGet();
+        public void getsPackage() throws IOException, JSONException {
+            final String name = "asdas";
+            final NpmPackage pkg = NpmProxyTest.this.npm.getPackage(name).blockingGet();
             MatcherAssert.assertThat("Package is null", pkg != null);
-            MatcherAssert.assertThat(
-                pkg.lastModified(),
-                new IsEqual<>(NpmProxyTest.DEF_LAST_MODIFIED)
-            );
+            NpmProxyTest.this.validatePackage(pkg, name);
         }
 
         @Test
         public void failsWhenGetPackage() {
             MatcherAssert.assertThat(
                 "Unexpected package found",
-                NpmProxyTest.this.npm.getPackage("not-found").blockingGet() == null
+                NpmProxyTest.this.npm.getPackage("not-found").isEmpty().blockingGet()
             );
         }
 
         @Test
         public void getsAsset() {
-            final NpmAsset asset = NpmProxyTest.this.npm.getAsset("asdas/-/asdas-1.0.0.tgz")
-                .blockingGet();
-            MatcherAssert.assertThat("Asset is null", asset != null);
-            MatcherAssert.assertThat(
-                asset.lastModified(),
-                new IsEqual<>(NpmProxyTest.DEF_LAST_MODIFIED)
-            );
-            MatcherAssert.assertThat(
-                asset.contentType(),
-                new IsEqual<>(NpmProxyTest.DEF_CONTENT_TYPE)
-            );
+            final String path = "asdas/-/asdas-1.0.0.tgz";
+            final NpmAsset asset = NpmProxyTest.this.npm.getAsset(path).blockingGet();
+            NpmProxyTest.this.validateAsset(asset, path);
         }
 
         @Test
         public void failsWhenGetAsset() {
             MatcherAssert.assertThat(
                 "Unexpected asset found",
-                NpmProxyTest.this.npm.getAsset("not-found").blockingGet() == null
+                NpmProxyTest.this.npm.getAsset("not-found").isEmpty().blockingGet()
             );
         }
 
         @BeforeEach
-        void setUp(final VertxTestContext context) throws InterruptedException {
+        void setUp() throws InterruptedException {
             MatcherAssert.assertThat(
                 "Package is null",
-                NpmProxyTest.this.npm.getPackage("asdas").blockingGet() != null
+                !NpmProxyTest.this.npm.getPackage("asdas").isEmpty().blockingGet()
             );
             MatcherAssert.assertThat(
                 "Asset is null",
-                NpmProxyTest.this.npm.getAsset("asdas/-/asdas-1.0.0.tgz").blockingGet() != null
+                !NpmProxyTest.this.npm.getAsset("asdas/-/asdas-1.0.0.tgz").isEmpty().blockingGet()
             );
-            context.completeNow();
             final CountDownLatch latch = new CountDownLatch(1);
             NpmProxyTest.this.server.close(unused -> latch.countDown());
             latch.await();
