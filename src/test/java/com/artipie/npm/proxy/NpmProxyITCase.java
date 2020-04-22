@@ -97,14 +97,6 @@ public final class NpmProxyITCase {
      */
     private VertxSliceServer srv;
 
-    static {
-        try (ServerSocket socket = new ServerSocket(0)) {
-            NpmProxyITCase.listenPort = socket.getLocalPort();
-        } catch (final IOException ex) {
-            throw new IllegalStateException(ex);
-        }
-    }
-
     @Test
     public void installModule() throws IOException, InterruptedException {
         final MockServerClient mock = new MockServerClient(
@@ -204,6 +196,11 @@ public final class NpmProxyITCase {
 
     @BeforeAll
     static void prepare() {
+        try (ServerSocket socket = new ServerSocket(0)) {
+            NpmProxyITCase.listenPort = socket.getLocalPort();
+        } catch (final IOException ex) {
+            throw new IllegalStateException(ex);
+        }
         Testcontainers.exposeHostPorts(NpmProxyITCase.listenPort);
     }
 
