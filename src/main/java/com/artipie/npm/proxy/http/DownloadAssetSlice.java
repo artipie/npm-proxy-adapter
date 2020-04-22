@@ -71,11 +71,6 @@ public final class DownloadAssetSlice implements Slice {
     public Response response(final String line,
         final Iterable<Map.Entry<String, String>> rqheaders,
         final Publisher<ByteBuffer> body) {
-        Logger.debug(
-            DownloadAssetSlice.class,
-            "Processing download asset request for query %s",
-            line
-        );
         final String path = new RequestLineFrom(line).uri().getPath().substring(1);
         Logger.debug(DownloadPackageSlice.class, "Determined asset path is: %s", path);
         return new AsyncResponse(
