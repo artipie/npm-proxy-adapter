@@ -191,7 +191,7 @@ public final class NpmProxyStorageTest {
     @BeforeEach
     void setUp() {
         this.delegate = new InMemoryStorage();
-        this.storage = new NpmProxyStorage(new RxStorageWrapper(this.delegate));
+        this.storage = new NpmProxyStorageImpl(new RxStorageWrapper(this.delegate));
     }
 
     private void doSavePackage(final String name) throws IOException {
