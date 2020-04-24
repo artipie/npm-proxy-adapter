@@ -34,6 +34,10 @@ import com.artipie.npm.proxy.model.NpmPackage;
 import io.vertx.core.json.JsonObject;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.time.LocalDateTime;
+import java.time.Month;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.concurrent.ExecutionException;
 import org.apache.commons.io.IOUtils;
 import org.hamcrest.MatcherAssert;
@@ -51,7 +55,20 @@ public final class RxNpmProxyStorageTest {
     /**
      * Last modified date for both package and asset.
      */
-    private static final String DEF_LAST_MODIFIED = "Tue, 24 Mar 2020 12:15:16 GMT";
+    private static final String LAST_MODIFIED = "Tue, 24 Mar 2020 12:15:16 GMT";
+
+    /**
+     * Last updated date for package (datetime).
+     */
+    private static final OffsetDateTime LAST_UPDATED = OffsetDateTime.of(
+        LocalDateTime.of(2020, Month.APRIL, 24, 12, 15, 16, 123_456_789),
+        ZoneOffset.UTC
+    );
+
+    /**
+     * Last updated date for package (string).
+     */
+    private static final String LAST_UPDATED_STR = "2020-04-24T12:15:16.123456789Z";
 
     /**
      * Asset Content-Type.
@@ -75,7 +92,7 @@ public final class RxNpmProxyStorageTest {
 
     @Test
     public void savesPackage() throws IOException, ExecutionException, InterruptedException {
-        this.doSavePackage("asdas");
+        this.doSavePackage("asdas", RxNpmProxyStorageTest.LAST_UPDATED);
         MatcherAssert.assertThat(
             new String(
                 new Concatenation(
@@ -91,9 +108,14 @@ public final class RxNpmProxyStorageTest {
             ).single().blockingGet().array(),
             StandardCharsets.UTF_8
         );
+        final JsonObject json = new JsonObject(metadata);
         MatcherAssert.assertThat(
-            new JsonObject(metadata).getString("last-modified"),
-            new IsEqual<>(RxNpmProxyStorageTest.DEF_LAST_MODIFIED)
+            json.getString("last-modified"),
+            new IsEqual<>(RxNpmProxyStorageTest.LAST_MODIFIED)
+        );
+        MatcherAssert.assertThat(
+            new JsonObject(metadata).getString("last-updated"),
+            new IsEqual<>(RxNpmProxyStorageTest.LAST_UPDATED_STR)
         );
     }
 
@@ -119,7 +141,7 @@ public final class RxNpmProxyStorageTest {
         final JsonObject json = new JsonObject(metadata);
         MatcherAssert.assertThat(
             json.getString("last-modified"),
-            new IsEqual<>(RxNpmProxyStorageTest.DEF_LAST_MODIFIED)
+            new IsEqual<>(RxNpmProxyStorageTest.LAST_MODIFIED)
         );
         MatcherAssert.assertThat(
             json.getString("content-type"),
@@ -130,7 +152,7 @@ public final class RxNpmProxyStorageTest {
     @Test
     public void loadsPackage() throws IOException {
         final String name = "asdas";
-        this.doSavePackage(name);
+        this.doSavePackage(name, RxNpmProxyStorageTest.LAST_UPDATED);
         final NpmPackage pkg = this.storage.getPackage(name).blockingGet();
         MatcherAssert.assertThat(
             pkg.name(),
@@ -142,7 +164,11 @@ public final class RxNpmProxyStorageTest {
         );
         MatcherAssert.assertThat(
             pkg.lastModified(),
-            new IsEqual<>(RxNpmProxyStorageTest.DEF_LAST_MODIFIED)
+            new IsEqual<>(RxNpmProxyStorageTest.LAST_MODIFIED)
+        );
+        MatcherAssert.assertThat(
+            pkg.lastUpdated(),
+            new IsEqual<>(RxNpmProxyStorageTest.LAST_UPDATED)
         );
     }
 
@@ -164,7 +190,7 @@ public final class RxNpmProxyStorageTest {
         );
         MatcherAssert.assertThat(
             asset.lastModified(),
-            new IsEqual<>(RxNpmProxyStorageTest.DEF_LAST_MODIFIED)
+            new IsEqual<>(RxNpmProxyStorageTest.LAST_MODIFIED)
         );
         MatcherAssert.assertThat(
             asset.contentType(),
@@ -194,12 +220,14 @@ public final class RxNpmProxyStorageTest {
         this.storage = new RxNpmProxyStorage(new RxStorageWrapper(this.delegate));
     }
 
-    private void doSavePackage(final String name) throws IOException {
+    private void doSavePackage(final String name, final OffsetDateTime updated)
+        throws IOException {
         this.storage.save(
             new NpmPackage(
                 name,
                 RxNpmProxyStorageTest.readContent(),
-                RxNpmProxyStorageTest.DEF_LAST_MODIFIED
+                RxNpmProxyStorageTest.LAST_MODIFIED,
+                updated
             )
         ).blockingAwait();
     }
@@ -209,9 +237,9 @@ public final class RxNpmProxyStorageTest {
             new NpmAsset(
                 path,
                 new Content.From(RxNpmProxyStorageTest.DEF_CONTENT.getBytes()),
-                RxNpmProxyStorageTest.DEF_LAST_MODIFIED,
+                RxNpmProxyStorageTest.LAST_MODIFIED,
                 RxNpmProxyStorageTest.DEF_CONTENT_TYPE
-            )
+           )
         ).blockingAwait();
     }
 

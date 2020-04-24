@@ -24,6 +24,8 @@
 package com.artipie.npm.proxy;
 
 import com.amihaiemil.eoyaml.YamlMapping;
+import java.time.Duration;
+import java.time.temporal.ChronoUnit;
 import java.util.Objects;
 import org.apache.commons.lang3.StringUtils;
 
@@ -32,6 +34,11 @@ import org.apache.commons.lang3.StringUtils;
  * @since 0.1
  */
 public final class NpmProxyConfig {
+    /**
+     * Default metadata TTL in minutes (1 day).
+     */
+    public static final int METADATA_TTL_MIN = 1_440;
+
     /**
      * Default connection timeout to remote repo (in millis).
      */
@@ -68,14 +75,10 @@ public final class NpmProxyConfig {
      * @return Request timeout
      */
     public int requestTimeout() {
-        final String timeout = this.remoteSettings().string("request-timeout");
-        final int result;
-        if (StringUtils.isEmpty(timeout)) {
-            result = NpmProxyConfig.REQUEST_TIMEOUT;
-        } else {
-            result = Integer.parseInt(timeout);
-        }
-        return result;
+        return NpmProxyConfig.intOrDefault(
+            this.remoteSettings().string("request-timeout"),
+            NpmProxyConfig.REQUEST_TIMEOUT
+        );
     }
 
     /**
@@ -83,14 +86,22 @@ public final class NpmProxyConfig {
      * @return Connect timeout
      */
     public int connectTimeout() {
-        final String timeout = this.remoteSettings().string("connect-timeout");
-        final int result;
-        if (StringUtils.isEmpty(timeout)) {
-            result = NpmProxyConfig.CONNECT_TIMEOUT;
-        } else {
-            result = Integer.parseInt(timeout);
-        }
-        return result;
+        return NpmProxyConfig.intOrDefault(
+            this.remoteSettings().string("connect-timeout"),
+            NpmProxyConfig.CONNECT_TIMEOUT
+        );
+    }
+
+    /**
+     * Get metadata time-to-live.
+     * @return Metadata TTL
+     */
+    public Duration metadataTtl() {
+        final int ttl = NpmProxyConfig.intOrDefault(
+            this.yaml.string("metadata-ttl-minutes"),
+            NpmProxyConfig.METADATA_TTL_MIN
+        );
+        return Duration.of(ttl, ChronoUnit.MINUTES);
     }
 
     /**
@@ -99,5 +110,22 @@ public final class NpmProxyConfig {
      */
     private YamlMapping remoteSettings() {
         return Objects.requireNonNull(this.yaml.yamlMapping("remote"));
+    }
+
+    /**
+     * Parse param as int or return default value.
+     * @param param Parameter to parse
+     * @param defaultValue Default value
+     * @return Parsed int or default value
+     * @checkstyle ParameterNameCheck (5 lines)
+     */
+    private static int intOrDefault(final String param, final int defaultValue) {
+        final int result;
+        if (StringUtils.isEmpty(param)) {
+            result = defaultValue;
+        } else {
+            result = Integer.parseInt(param);
+        }
+        return result;
     }
 }

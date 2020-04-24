@@ -35,6 +35,7 @@ import java.net.ServerSocket;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.OffsetDateTime;
 import java.util.concurrent.CountDownLatch;
 import org.apache.commons.io.IOUtils;
 import org.hamcrest.MatcherAssert;
@@ -87,6 +88,7 @@ public final class HttpNpmRemoteTest {
     @Test
     public void loadsPackage() throws IOException, JSONException {
         final String name = "asdas";
+        final OffsetDateTime started = OffsetDateTime.now();
         final NpmPackage pkg = this.remote.loadPackage(name).blockingGet();
         MatcherAssert.assertThat("Package is null", pkg != null);
         MatcherAssert.assertThat(
@@ -101,6 +103,11 @@ public final class HttpNpmRemoteTest {
         MatcherAssert.assertThat(
             pkg.lastModified(),
             new IsEqual<>(HttpNpmRemoteTest.LAST_MODIFIED)
+        );
+        MatcherAssert.assertThat(
+            String.format("Unexpected last updated date: %s", pkg.lastUpdated()),
+            pkg.lastUpdated().isAfter(started)
+                && pkg.lastUpdated().isBefore(OffsetDateTime.now())
         );
     }
 

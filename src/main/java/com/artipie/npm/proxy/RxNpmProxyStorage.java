@@ -34,6 +34,8 @@ import io.reactivex.Maybe;
 import io.reactivex.Single;
 import io.vertx.core.json.JsonObject;
 import java.nio.charset.StandardCharsets;
+import java.time.OffsetDateTime;
+import java.time.format.DateTimeFormatter;
 
 /**
  * Base NPM Proxy storage implementation. It encapsulates storage format details
@@ -139,7 +141,11 @@ public final class RxNpmProxyStorage implements NpmProxyStorage {
                     new NpmPackage(
                         name,
                         new String(content.array(), StandardCharsets.UTF_8),
-                        metadata.getString("last-modified")
+                        metadata.getString("last-modified"),
+                        OffsetDateTime.parse(
+                            metadata.getString("last-updated"),
+                            DateTimeFormatter.ISO_OFFSET_DATE_TIME
+                        )
                     )
                 );
     }
@@ -174,6 +180,7 @@ public final class RxNpmProxyStorage implements NpmProxyStorage {
     private static String packageMetadata(final NpmPackage pkg) {
         final JsonObject json = new JsonObject();
         json.put("last-modified", pkg.lastModified());
+        json.put("last-updated", DateTimeFormatter.ISO_OFFSET_DATE_TIME.format(pkg.lastUpdated()));
         return json.encode();
     }
 

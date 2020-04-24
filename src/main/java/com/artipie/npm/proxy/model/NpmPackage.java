@@ -23,6 +23,8 @@
  */
 package com.artipie.npm.proxy.model;
 
+import java.time.OffsetDateTime;
+
 /**
  * NPM Package.
  * @since 0.1
@@ -45,15 +47,27 @@ public final class NpmPackage {
     private final String modified;
 
     /**
+     * Last updated date.
+     */
+    private final OffsetDateTime updated;
+
+    /**
      * Ctor.
      * @param name Package name
      * @param content JSON data
      * @param modified Last modified date
+     * @param updated Last update date
+     * @checkstyle ParameterNumberCheck (10 lines)
      */
-    public NpmPackage(final String name, final String content, final String modified) {
+    public NpmPackage(
+        final String name,
+        final String content,
+        final String modified,
+        final OffsetDateTime updated) {
         this.name = name;
         this.content = content;
         this.modified = modified;
+        this.updated = updated;
     }
 
     /**
@@ -78,5 +92,13 @@ public final class NpmPackage {
      */
     public String lastModified() {
         return this.modified;
+    }
+
+    /**
+     * Get last updated date.
+     * @return Last updated date
+     */
+    public OffsetDateTime lastUpdated() {
+        return this.updated;
     }
 }
