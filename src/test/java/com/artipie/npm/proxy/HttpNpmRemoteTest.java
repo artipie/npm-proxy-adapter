@@ -112,7 +112,7 @@ public final class HttpNpmRemoteTest {
                 started,
                 checked
             ),
-            pkg.lastUpdated().isAfter(started) && pkg.lastUpdated().isBefore(checked)
+            pkg.lastUpdated().isAfter(started) && !pkg.lastUpdated().isAfter(checked)
         );
     }
 
