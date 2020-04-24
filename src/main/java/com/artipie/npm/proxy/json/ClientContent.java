@@ -23,47 +23,29 @@
  */
 package com.artipie.npm.proxy.json;
 
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
 /**
- * Cached package content representation.
+ * Client package content representation.
  *
  * @since 0.1
  */
-public final class CachedPackage extends TransformedPackage {
+public final class ClientContent extends TransformedContent {
     /**
-     * Regexp pattern for asset links.
+     * Base URL where adapter is published.
      */
-    private static final String REF_PATTERN = "^(.+)/(%s/-/.+)$";
-
-    /**
-     * Package name.
-     */
-    private final String pkg;
+    private final String url;
 
     /**
      * Ctor.
      * @param content Package content to be transformed
-     * @param pkg Package name
+     * @param url Base URL where adapter is published
      */
-    public CachedPackage(final String content, final String pkg) {
+    public ClientContent(final String content, final String url) {
         super(content);
-        this.pkg = pkg;
+        this.url = url;
     }
 
     @Override
     String transformRef(final String ref) {
-        final Pattern pattern = Pattern.compile(
-            String.format(CachedPackage.REF_PATTERN, this.pkg)
-        );
-        final Matcher matcher = pattern.matcher(ref);
-        final String newref;
-        if (matcher.matches()) {
-            newref = String.format("%s/%s", TransformedPackage.PLACEHOLDER, matcher.group(2));
-        } else {
-            newref = ref;
-        }
-        return newref;
+        return ref.replace(TransformedContent.PLACEHOLDER, this.url);
     }
 }

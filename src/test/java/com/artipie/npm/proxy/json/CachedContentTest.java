@@ -45,14 +45,14 @@ public class CachedContentTest {
             "/json/original.json",
             StandardCharsets.UTF_8
         );
-        final String transformed = new CachedPackage(original, "asdas").value();
+        final String transformed = new CachedContent(original, "asdas").value();
         final DocumentContext json = JsonPath.parse(transformed);
         final JSONArray refs = json.read("$.versions.[*].dist.tarball", JSONArray.class);
         MatcherAssert.assertThat("Could not find asset references", refs.size() > 0);
         for (final Object ref: refs) {
             MatcherAssert.assertThat(
                 (String) ref,
-                new StringStartsWith(TransformedPackage.PLACEHOLDER)
+                new StringStartsWith(TransformedContent.PLACEHOLDER)
             );
         }
     }

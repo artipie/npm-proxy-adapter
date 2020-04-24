@@ -217,6 +217,7 @@ public final class NpmProxyITCase {
         ).respond(
             HttpResponse.response()
                 .withHeader("Content-Type", "application/json")
+                .withHeader("Last-Modified", "Wed, 26 Dec 2018 02:15:35 GMT")
                 .withBody(
                     IOUtils.resourceToString(
                         "/json/original.json",
@@ -235,6 +236,7 @@ public final class NpmProxyITCase {
         ).respond(
             HttpResponse.response()
                 .withHeader("Content-Type", "application/octet-stream")
+                .withHeader("Last-Modified", "Wed, 26 Dec 2018 02:15:35 GMT")
                 .withBody(
                     BinaryBody.binary(
                         IOUtils.resourceToByteArray("/binaries/asdas-1.0.0.tgz")
