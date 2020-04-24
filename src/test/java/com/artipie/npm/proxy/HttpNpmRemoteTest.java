@@ -104,10 +104,15 @@ public final class HttpNpmRemoteTest {
             pkg.lastModified(),
             new IsEqual<>(HttpNpmRemoteTest.LAST_MODIFIED)
         );
+        final OffsetDateTime checked = OffsetDateTime.now();
         MatcherAssert.assertThat(
-            String.format("Unexpected last updated date: %s", pkg.lastUpdated()),
-            pkg.lastUpdated().isAfter(started)
-                && pkg.lastUpdated().isBefore(OffsetDateTime.now())
+            String.format(
+                "Unexpected last updated date: %s (started: %s, checked: %s)",
+                pkg.lastUpdated(),
+                started,
+                checked
+            ),
+            pkg.lastUpdated().isAfter(started) && pkg.lastUpdated().isBefore(checked)
         );
     }
 
