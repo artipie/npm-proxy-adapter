@@ -34,13 +34,11 @@ import com.artipie.http.rs.RsWithHeaders;
 import com.artipie.http.rs.RsWithStatus;
 import com.artipie.npm.proxy.NpmProxy;
 import com.artipie.npm.proxy.json.ClientContent;
-import com.jcabi.log.Logger;
 import hu.akarnokd.rxjava2.interop.SingleInterop;
 import java.nio.ByteBuffer;
 import java.util.Map;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import java.util.stream.StreamSupport;
+import org.apache.commons.lang3.StringUtils;
 import org.cactoos.list.ListOf;
 import org.cactoos.map.MapEntry;
 import org.reactivestreams.Publisher;
@@ -53,22 +51,24 @@ import org.reactivestreams.Publisher;
  */
 public final class DownloadPackageSlice implements Slice {
     /**
-     * Download package request URL regexp pattern.
-     */
-    public static final Pattern PATH_PATTERN = Pattern.compile("^/(((?!/-/).)+)$");
-
-    /**
      * NPM Proxy facade.
      */
     private final NpmProxy npm;
 
     /**
+     * Package path helper.
+     */
+    private final PackagePath path;
+
+    /**
      * Ctor.
      *
      * @param npm NPM Proxy facade
+     * @param path Package path helper
      */
-    public DownloadPackageSlice(final NpmProxy npm) {
+    public DownloadPackageSlice(final NpmProxy npm, final PackagePath path) {
         this.npm = npm;
+        this.path = path;
     }
 
     @Override
@@ -76,22 +76,14 @@ public final class DownloadPackageSlice implements Slice {
     public Response response(final String line,
         final Iterable<Map.Entry<String, String>> headers,
         final Publisher<ByteBuffer> body) {
-        final Matcher matcher = DownloadPackageSlice.PATH_PATTERN
-            .matcher(new RequestLineFrom(line).uri().getPath());
-        if (!matcher.matches()) {
-            return new RsNotFound();
-        }
-        final String name = matcher.group(1);
-        Logger.debug(DownloadPackageSlice.class, "Determined package name is: %s", name);
         return new AsyncResponse(
-            this.npm.getPackage(name)
+            this.npm.getPackage(this.path.value(new RequestLineFrom(line).uri().getPath()))
                 .map(
                     pkg -> (Response) new RsWithHeaders(
                         new RsWithBody(
                             new RsWithStatus(RsStatus.OK),
                             new Content.From(
-                                DownloadPackageSlice.clientFormat(pkg.content(), headers)
-                                    .getBytes()
+                                this.clientFormat(pkg.content(), headers).getBytes()
                             )
                         ),
                         new ListOf<Map.Entry<String, String>>(
@@ -110,13 +102,28 @@ public final class DownloadPackageSlice implements Slice {
      * @param headers Request headers
      * @return External client package
      */
-    private static String clientFormat(final String data,
+    private String clientFormat(final String data,
         final Iterable<Map.Entry<String, String>> headers) {
         final String host = StreamSupport.stream(headers.spliterator(), false)
             .filter(e -> e.getKey().equalsIgnoreCase("Host"))
             .findAny().orElseThrow(
                 () -> new RuntimeException("Could not find Host header in request")
             ).getValue();
-        return new ClientContent(data, String.format("http://%s", host)).value();
+        return new ClientContent(data, this.assetPrefix(host)).value();
+    }
+
+    /**
+     * Generates asset base reference.
+     * @param host External host
+     * @return Asset base reference
+     */
+    private String assetPrefix(final String host) {
+        final String result;
+        if (StringUtils.isEmpty(this.path.prefix())) {
+            result = String.format("http://%s", host);
+        } else {
+            result = String.format("http://%s/%s", host, this.path.prefix());
+        }
+        return result;
     }
 }
