@@ -61,8 +61,8 @@ public class NpmProxy {
     public NpmProxy(final NpmProxyConfig config, final Vertx vertx, final Storage storage) {
         this(
             vertx,
-            new NpmProxyStorageImpl(new RxStorageWrapper(storage)),
-            new NpmRemoteImpl(config, vertx)
+            new RxNpmProxyStorage(new RxStorageWrapper(storage)),
+            new HttpNpmRemote(config, vertx)
         );
     }
 

@@ -48,12 +48,12 @@ import org.junit.jupiter.api.Test;
 import org.skyscreamer.jsonassert.JSONAssert;
 
 /**
- * NPM Remote client test.
+ * Http NPM Remote client test.
  * @since 0.1
  * @checkstyle ClassDataAbstractionCouplingCheck (500 lines)
  */
 @SuppressWarnings({"PMD.AvoidDuplicateLiterals", "PMD.TooManyMethods"})
-public final class NpmRemoteTest {
+public final class HttpNpmRemoteTest {
     /**
      * Last modified date for both package and asset.
      */
@@ -77,7 +77,7 @@ public final class NpmRemoteTest {
     /**
      * NPM Remote client instance.
      */
-    private NpmRemoteImpl remote;
+    private HttpNpmRemote remote;
 
     /**
      * Http Server instance.
@@ -100,7 +100,7 @@ public final class NpmRemoteTest {
         );
         MatcherAssert.assertThat(
             pkg.lastModified(),
-            new IsEqual<>(NpmRemoteTest.LAST_MODIFIED)
+            new IsEqual<>(HttpNpmRemoteTest.LAST_MODIFIED)
         );
     }
 
@@ -120,15 +120,15 @@ public final class NpmRemoteTest {
                     new Concatenation(asset.dataPublisher()).single().blockingGet().array(),
                     StandardCharsets.UTF_8
                 ),
-                new IsEqual<>(NpmRemoteTest.DEF_CONTENT)
+                new IsEqual<>(HttpNpmRemoteTest.DEF_CONTENT)
             );
             MatcherAssert.assertThat(
                 asset.lastModified(),
-                new IsEqual<>(NpmRemoteTest.LAST_MODIFIED)
+                new IsEqual<>(HttpNpmRemoteTest.LAST_MODIFIED)
             );
             MatcherAssert.assertThat(
                 asset.contentType(),
-                new IsEqual<>(NpmRemoteTest.DEF_CONTENT_TYPE)
+                new IsEqual<>(HttpNpmRemoteTest.DEF_CONTENT_TYPE)
             );
         } finally {
             Files.delete(tmp);
@@ -176,11 +176,16 @@ public final class NpmRemoteTest {
     @BeforeEach
     void setUp() throws IOException, InterruptedException {
         final int port = this.rndPort();
-        this.server = NpmRemoteTest.prepareServer(port);
+        this.server = HttpNpmRemoteTest.prepareServer(port);
         final YamlMapping yaml = Yaml.createYamlMappingBuilder()
-            .add("remote-url", String.format("http://localhost:%d", port))
-            .build();
-        this.remote = new NpmRemoteImpl(new NpmProxyConfig(yaml), NpmRemoteTest.vertx);
+            .add(
+                "remote",
+                Yaml.createYamlMappingBuilder().add(
+                    "url",
+                        String.format("http://localhost:%d", port)
+                ).build()
+            ).build();
+        this.remote = new HttpNpmRemote(new NpmProxyConfig(yaml), HttpNpmRemoteTest.vertx);
     }
 
     @AfterEach
@@ -191,12 +196,12 @@ public final class NpmRemoteTest {
 
     @BeforeAll
     static void prepare() {
-        NpmRemoteTest.vertx = Vertx.vertx();
+        HttpNpmRemoteTest.vertx = Vertx.vertx();
     }
 
     @AfterAll
     static void cleanup() {
-        NpmRemoteTest.vertx.close();
+        HttpNpmRemoteTest.vertx.close();
     }
 
     private int rndPort() throws IOException {
@@ -216,13 +221,13 @@ public final class NpmRemoteTest {
             req -> {
                 if (req.path().equalsIgnoreCase("/asdas")) {
                     req.response()
-                        .putHeader("Last-Modified", NpmRemoteTest.LAST_MODIFIED)
+                        .putHeader("Last-Modified", HttpNpmRemoteTest.LAST_MODIFIED)
                         .end(original);
                 } else if (req.path().equalsIgnoreCase("/asdas/-/asdas-1.0.0.tgz")) {
                     req.response()
-                        .putHeader("Last-Modified", NpmRemoteTest.LAST_MODIFIED)
-                        .putHeader("Content-Type", NpmRemoteTest.DEF_CONTENT_TYPE)
-                        .end(NpmRemoteTest.DEF_CONTENT);
+                        .putHeader("Last-Modified", HttpNpmRemoteTest.LAST_MODIFIED)
+                        .putHeader("Content-Type", HttpNpmRemoteTest.DEF_CONTENT_TYPE)
+                        .end(HttpNpmRemoteTest.DEF_CONTENT);
                 } else {
                     // @checkstyle MagicNumberCheck (1 line)
                     req.response().setStatusCode(404).end();

@@ -36,11 +36,13 @@ import io.vertx.core.json.JsonObject;
 import java.nio.charset.StandardCharsets;
 
 /**
- * NPM Proxy storage implementation.
+ * Base NPM Proxy storage implementation. It encapsulates storage format details
+ * and allows to handle both primary data and metadata files within one calls.
+ * It uses underlying RxStorage and works in Rx-way.
  * @since 0.1
  */
 @SuppressWarnings("PMD.AvoidDuplicateLiterals")
-public final class NpmProxyStorageImpl implements NpmProxyStorage {
+public final class RxNpmProxyStorage implements NpmProxyStorage {
     /**
      * Underlying storage.
      */
@@ -50,7 +52,7 @@ public final class NpmProxyStorageImpl implements NpmProxyStorage {
      * Ctor.
      * @param storage Underlying storage
      */
-    public NpmProxyStorageImpl(final RxStorage storage) {
+    public RxNpmProxyStorage(final RxStorage storage) {
         this.storage = storage;
     }
 
@@ -65,7 +67,7 @@ public final class NpmProxyStorageImpl implements NpmProxyStorage {
             this.storage.save(
                 new Key.From(pkg.name(), "package.metadata"),
                 new Content.From(
-                    NpmProxyStorageImpl.packageMetadata(pkg).getBytes(StandardCharsets.UTF_8)
+                    RxNpmProxyStorage.packageMetadata(pkg).getBytes(StandardCharsets.UTF_8)
                 )
             )
         );
@@ -84,7 +86,7 @@ public final class NpmProxyStorageImpl implements NpmProxyStorage {
                     String.format("%s.metadata", asset.path())
                 ),
                 new Content.From(
-                    NpmProxyStorageImpl.assetMetadata(asset).getBytes(StandardCharsets.UTF_8)
+                    RxNpmProxyStorage.assetMetadata(asset).getBytes(StandardCharsets.UTF_8)
                 )
             )
         );

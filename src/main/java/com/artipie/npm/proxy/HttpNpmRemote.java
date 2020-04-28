@@ -37,21 +37,13 @@ import io.vertx.reactivex.ext.web.codec.BodyCodec;
 import java.nio.file.Path;
 
 /**
- * NPM Remote client implementation.
+ * Base NPM Remote client implementation. It calls remote NPM repository
+ * to download NPM packages and assets. It uses underlying Vertx Web Client inside
+ * and works in Rx-way.
  * @since 0.1
  */
 @SuppressWarnings("PMD.AvoidDuplicateLiterals")
-public final class NpmRemoteImpl implements NpmRemote {
-    /**
-     * Default connection timeout to remote repo (in millis).
-     */
-    private static final int CONNECT_TIMEOUT = 2_000;
-
-    /**
-     * Default request timeout to remote repo (in millis).
-     */
-    private static final int REQUEST_TIMEOUT = 5_000;
-
+public final class HttpNpmRemote implements NpmRemote {
     /**
      * Web client.
      */
@@ -72,17 +64,17 @@ public final class NpmRemoteImpl implements NpmRemote {
      * @param config Npm Proxy config
      * @param vertx The Vertx instance
      */
-    NpmRemoteImpl(final NpmProxyConfig config, final Vertx vertx) {
+    HttpNpmRemote(final NpmProxyConfig config, final Vertx vertx) {
         this.config = config;
         this.vertx = vertx;
-        this.client = WebClient.create(vertx, NpmRemoteImpl.defaultWebClientOptions());
+        this.client = WebClient.create(vertx, this.defaultWebClientOptions());
     }
 
     @Override
     //@checkstyle ReturnCountCheck (40 lines)
     public Maybe<NpmPackage> loadPackage(final String name) {
         return this.client.getAbs(String.format("%s/%s", this.config.url(), name))
-            .timeout(NpmRemoteImpl.REQUEST_TIMEOUT)
+            .timeout(this.config.requestTimeout())
             .rxSend()
             .flatMapMaybe(
                 response -> {
@@ -174,11 +166,11 @@ public final class NpmRemoteImpl implements NpmRemote {
      * Build default Web Client options.
      * @return Default Web Client options
      */
-    private static WebClientOptions defaultWebClientOptions() {
+    private WebClientOptions defaultWebClientOptions() {
         final WebClientOptions options = new WebClientOptions();
         options.setKeepAlive(true);
         options.setUserAgent("Artipie");
-        options.setConnectTimeout(NpmRemoteImpl.CONNECT_TIMEOUT);
+        options.setConnectTimeout(this.config.connectTimeout());
         return options;
     }
 }
