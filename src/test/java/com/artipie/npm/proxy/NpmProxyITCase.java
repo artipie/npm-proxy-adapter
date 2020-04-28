@@ -177,8 +177,13 @@ public final class NpmProxyITCase {
         final Integer port = this.mockctner.getFirstMappedPort();
         final Storage storage = new InMemoryStorage();
         final YamlMapping yaml = Yaml.createYamlMappingBuilder()
-            .add("remote-url", String.format("http://%s:%d", address, port))
-            .build();
+            .add(
+                "remote",
+                Yaml.createYamlMappingBuilder().add(
+                    "url",
+                    String.format("http://%s:%d", address, port)
+                ).build()
+            ).build();
         final NpmProxy npm = new NpmProxy(
             new NpmProxyConfig(yaml),
             NpmProxyITCase.VERTX,

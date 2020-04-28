@@ -24,12 +24,24 @@
 package com.artipie.npm.proxy;
 
 import com.amihaiemil.eoyaml.YamlMapping;
+import java.util.Objects;
+import org.apache.commons.lang3.StringUtils;
 
 /**
  * NPM Proxy config.
  * @since 0.1
  */
 public final class NpmProxyConfig {
+    /**
+     * Default connection timeout to remote repo (in millis).
+     */
+    private static final int CONNECT_TIMEOUT = 2_000;
+
+    /**
+     * Default request timeout to remote repo (in millis).
+     */
+    private static final int REQUEST_TIMEOUT = 5_000;
+
     /**
      * Custom Repository YAML configuration.
      */
@@ -48,6 +60,44 @@ public final class NpmProxyConfig {
      * @return Remote repository base URL
      */
     public String url() {
-        return this.yaml.string("remote-url");
+        return this.remoteSettings().string("url");
+    }
+
+    /**
+     * Get request timeout to remote repo (in millis).
+     * @return Request timeout
+     */
+    public int requestTimeout() {
+        final String timeout = this.remoteSettings().string("request-timeout");
+        final int result;
+        if (StringUtils.isEmpty(timeout)) {
+            result = NpmProxyConfig.REQUEST_TIMEOUT;
+        } else {
+            result = Integer.parseInt(timeout);
+        }
+        return result;
+    }
+
+    /**
+     * Get connect timeout to remote repo (in millis).
+     * @return Connect timeout
+     */
+    public int connectTimeout() {
+        final String timeout = this.remoteSettings().string("connect-timeout");
+        final int result;
+        if (StringUtils.isEmpty(timeout)) {
+            result = NpmProxyConfig.CONNECT_TIMEOUT;
+        } else {
+            result = Integer.parseInt(timeout);
+        }
+        return result;
+    }
+
+    /**
+     * Get remote repository settings section.
+     * @return Remote repository settings
+     */
+    private YamlMapping remoteSettings() {
+        return Objects.requireNonNull(this.yaml.yamlMapping("remote"));
     }
 }

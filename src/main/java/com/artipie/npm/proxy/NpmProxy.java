@@ -24,43 +24,20 @@
 package com.artipie.npm.proxy;
 
 import com.artipie.asto.Storage;
-import com.artipie.asto.fs.RxFile;
 import com.artipie.asto.rx.RxStorageWrapper;
-import com.artipie.npm.proxy.json.CachedContent;
 import com.artipie.npm.proxy.model.NpmAsset;
 import com.artipie.npm.proxy.model.NpmPackage;
-import com.jcabi.log.Logger;
 import io.reactivex.Maybe;
-import io.vertx.core.file.OpenOptions;
-import io.vertx.ext.web.client.WebClientOptions;
 import io.vertx.reactivex.core.Vertx;
-import io.vertx.reactivex.ext.web.client.WebClient;
-import io.vertx.reactivex.ext.web.codec.BodyCodec;
-import java.io.File;
-import java.nio.file.Files;
+import java.io.IOException;
+import java.nio.file.Paths;
 
 /**
  * NPM Proxy.
  * @since 0.1
- * @checkstyle ClassDataAbstractionCouplingCheck (500 lines)
+ * @checkstyle ClassDataAbstractionCouplingCheck (200 lines)
  */
-@SuppressWarnings("PMD.AvoidDuplicateLiterals")
 public class NpmProxy {
-    /**
-     * Default connection timeout to remote repo (in millis).
-     */
-    private static final int CONNECT_TIMEOUT = 2_000;
-
-    /**
-     * Default request timeout to remote repo (in millis).
-     */
-    private static final int REQUEST_TIMEOUT = 5_000;
-
-    /**
-     * NPM Proxy config.
-     */
-    private final NpmProxyConfig config;
-
     /**
      * The Vertx instance.
      */
@@ -72,9 +49,9 @@ public class NpmProxy {
     private final NpmProxyStorage storage;
 
     /**
-     * Web client.
+     * Remote repository client.
      */
-    private final WebClient client;
+    private final NpmRemote remote;
 
     /**
      * Ctor.
@@ -83,130 +60,65 @@ public class NpmProxy {
      * @param storage Adapter storage
      */
     public NpmProxy(final NpmProxyConfig config, final Vertx vertx, final Storage storage) {
-        this.config = config;
+        this(
+            vertx,
+            new RxNpmProxyStorage(new RxStorageWrapper(storage)),
+            new HttpNpmRemote(config, vertx)
+        );
+    }
+
+    /**
+     * Default-scoped ctor (for tests).
+     * @param vertx Vertx instance
+     * @param storage NPM storage
+     * @param remote Remote repository client
+     * @checkstyle ParameterNumberCheck (10 lines)
+     */
+    NpmProxy(final Vertx vertx,
+        final NpmProxyStorage storage,
+        final NpmRemote remote) {
         this.vertx = vertx;
-        this.storage = new NpmProxyStorage(new RxStorageWrapper(storage));
-        this.client =  WebClient.create(vertx, NpmProxy.defaultWebClientOptions());
+        this.storage = storage;
+        this.remote = remote;
     }
 
     /**
      * Retrieve package metadata.
-     * @param pkg Package name
+     * @param name Package name
      * @return Package metadata (cached or downloaded from remote repository)
-     * @checkstyle ReturnCountCheck (42 lines)
      */
-    public Maybe<NpmPackage> getPackage(final String pkg) {
-        return this.client.getAbs(String.format("%s/%s", this.config.url(), pkg))
-            .timeout(NpmProxy.REQUEST_TIMEOUT)
-            .rxSend()
-            .flatMapMaybe(
-                response -> {
-                    //@checkstyle MagicNumberCheck (1 line)
-                    if (response.statusCode() == 200) {
-                        return this.storage.save(
-                            new NpmPackage(
-                                pkg,
-                                new CachedContent(response.bodyAsString(), pkg).value(),
-                                response.getHeader("Last-Modified")
-                            )
-                        ).andThen(Maybe.defer(() -> this.storage.getPackage(pkg)));
-                    } else {
-                        return this.storage.getPackage(pkg);
-                    }
-                }
-            ).onErrorResumeNext(
-                throwable -> {
-                    Logger.error(
-                        NpmProxy.class,
-                        "Error occurred when process get package call: %s",
-                        throwable.getMessage()
-                    );
-                    return this.storage.getPackage(pkg);
-                }
-            );
+    public Maybe<NpmPackage> getPackage(final String name) {
+        return this.remote.loadPackage(name).flatMap(
+            pkg -> this.storage.save(pkg).andThen(Maybe.just(pkg))
+        ).switchIfEmpty(Maybe.defer(() -> this.storage.getPackage(name)));
     }
 
     /**
      * Retrieve asset.
      * @param path Asset path
      * @return Asset data (cached or downloaded from remote repository)
-     * @checkstyle ReturnCountCheck (43 lines)
      */
     public Maybe<NpmAsset> getAsset(final String path) {
-        return this.storage.getAsset(path)
-            .switchIfEmpty(
-                Maybe.defer(
-                    () -> {
-                        final File tmp = Files.createTempFile("npm-asset-", ".tmp").toFile();
-                        return this.vertx.fileSystem().rxOpen(
-                            tmp.getAbsolutePath(),
-                            new OpenOptions().setSync(true).setTruncateExisting(true)
-                        ).flatMapMaybe(
-                            asyncfile ->
-                                this.client.getAbs(
-                                    String.format("%s/%s", this.config.url(), path)
-                                ).as(
-                                    BodyCodec.pipe(asyncfile)
-                                ).rxSend().flatMapMaybe(
-                                    response -> {
-                                        // @checkstyle MagicNumberCheck (1 line)
-                                        if (response.statusCode() == 200) {
-                                            return this.storage.save(
-                                                new NpmAsset(
-                                                    path,
-                                                    new RxFile(
-                                                        tmp.toPath(),
-                                                        this.vertx.fileSystem()
-                                                    ).flow(),
-                                                    response.getHeader("Last-Modified"),
-                                                    response.getHeader("Content-Type")
-                                                )
-                                            ).andThen(
-                                                Maybe.defer(
-                                                    () -> this.storage.getAsset(path)
-                                                )
-                                            );
-                                        } else {
-                                            Logger.debug(
-                                                this,
-                                                "Could not load asset: status code %d",
-                                                response.statusCode()
-                                            );
-                                            return Maybe.empty();
-                                        }
-                                    }
-                                ).onErrorResumeNext(
-                                    throwable -> {
-                                        Logger.error(
-                                            this,
-                                            "Error  occurred when process get asset call: %s",
-                                            throwable.getMessage()
-                                        );
-                                        return Maybe.empty();
-                                    }
-                                ).doOnTerminate(tmp::delete)
-                        );
-                    }
-                )
-            );
+        return this.storage.getAsset(path).switchIfEmpty(
+            Maybe.defer(
+                () -> this.vertx.fileSystem().rxCreateTempFile("npm-asset-", ".tmp")
+                    .flatMapMaybe(
+                        tmp -> this.remote.loadAsset(path, Paths.get(tmp)).flatMap(
+                            asset -> this.storage.save(asset)
+                                .andThen(Maybe.defer(() -> this.storage.getAsset(path)))
+                                .doOnTerminate(() -> this.vertx.fileSystem().rxDelete(tmp))
+                        )
+                    )
+            )
+        );
     }
 
     /**
-     * Close NPM Proxy adapter and underlying Web Client.
+     * Close NPM Proxy adapter and underlying remote client.
+     * @throws IOException when underlying remote client fails to close
      */
-    public void close() {
-        this.client.close();
+    public void close() throws IOException {
+        this.remote.close();
     }
 
-    /**
-     * Build default Web Client options.
-     * @return Default Web Client options
-     */
-    private static WebClientOptions defaultWebClientOptions() {
-        final WebClientOptions options = new WebClientOptions();
-        options.setKeepAlive(true);
-        options.setUserAgent("Artipie");
-        options.setConnectTimeout(NpmProxy.CONNECT_TIMEOUT);
-        return options;
-    }
 }

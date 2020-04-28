@@ -47,7 +47,7 @@ import org.junit.jupiter.api.Test;
  * @checkstyle ClassDataAbstractionCouplingCheck (500 lines)
  */
 @SuppressWarnings("PMD.AvoidDuplicateLiterals")
-public final class NpmProxyStorageTest {
+public final class RxNpmProxyStorageTest {
     /**
      * Last modified date for both package and asset.
      */
@@ -83,7 +83,7 @@ public final class NpmProxyStorageTest {
                 ).single().blockingGet().array(),
                 StandardCharsets.UTF_8
             ),
-            new IsEqual<>(NpmProxyStorageTest.readContent())
+            new IsEqual<>(RxNpmProxyStorageTest.readContent())
         );
         final String metadata = new String(
             new Concatenation(
@@ -93,7 +93,7 @@ public final class NpmProxyStorageTest {
         );
         MatcherAssert.assertThat(
             new JsonObject(metadata).getString("last-modified"),
-            new IsEqual<>(NpmProxyStorageTest.DEF_LAST_MODIFIED)
+            new IsEqual<>(RxNpmProxyStorageTest.DEF_LAST_MODIFIED)
         );
     }
 
@@ -108,7 +108,7 @@ public final class NpmProxyStorageTest {
                 ).single().blockingGet().array(),
                 StandardCharsets.UTF_8
             ),
-            new IsEqual<>(NpmProxyStorageTest.DEF_CONTENT)
+            new IsEqual<>(RxNpmProxyStorageTest.DEF_CONTENT)
         );
         final String metadata = new String(
             new Concatenation(
@@ -119,11 +119,11 @@ public final class NpmProxyStorageTest {
         final JsonObject json = new JsonObject(metadata);
         MatcherAssert.assertThat(
             json.getString("last-modified"),
-            new IsEqual<>(NpmProxyStorageTest.DEF_LAST_MODIFIED)
+            new IsEqual<>(RxNpmProxyStorageTest.DEF_LAST_MODIFIED)
         );
         MatcherAssert.assertThat(
             json.getString("content-type"),
-            new IsEqual<>(NpmProxyStorageTest.DEF_CONTENT_TYPE)
+            new IsEqual<>(RxNpmProxyStorageTest.DEF_CONTENT_TYPE)
         );
     }
 
@@ -138,11 +138,11 @@ public final class NpmProxyStorageTest {
         );
         MatcherAssert.assertThat(
             pkg.content(),
-            new IsEqual<>(NpmProxyStorageTest.readContent())
+            new IsEqual<>(RxNpmProxyStorageTest.readContent())
         );
         MatcherAssert.assertThat(
             pkg.lastModified(),
-            new IsEqual<>(NpmProxyStorageTest.DEF_LAST_MODIFIED)
+            new IsEqual<>(RxNpmProxyStorageTest.DEF_LAST_MODIFIED)
         );
     }
 
@@ -160,15 +160,15 @@ public final class NpmProxyStorageTest {
                 new Concatenation(asset.dataPublisher()).single().blockingGet().array(),
                 StandardCharsets.UTF_8
             ),
-            new IsEqual<>(NpmProxyStorageTest.DEF_CONTENT)
+            new IsEqual<>(RxNpmProxyStorageTest.DEF_CONTENT)
         );
         MatcherAssert.assertThat(
             asset.lastModified(),
-            new IsEqual<>(NpmProxyStorageTest.DEF_LAST_MODIFIED)
+            new IsEqual<>(RxNpmProxyStorageTest.DEF_LAST_MODIFIED)
         );
         MatcherAssert.assertThat(
             asset.contentType(),
-            new IsEqual<>(NpmProxyStorageTest.DEF_CONTENT_TYPE)
+            new IsEqual<>(RxNpmProxyStorageTest.DEF_CONTENT_TYPE)
         );
     }
 
@@ -191,15 +191,15 @@ public final class NpmProxyStorageTest {
     @BeforeEach
     void setUp() {
         this.delegate = new InMemoryStorage();
-        this.storage = new NpmProxyStorage(new RxStorageWrapper(this.delegate));
+        this.storage = new RxNpmProxyStorage(new RxStorageWrapper(this.delegate));
     }
 
     private void doSavePackage(final String name) throws IOException {
         this.storage.save(
             new NpmPackage(
                 name,
-                NpmProxyStorageTest.readContent(),
-                NpmProxyStorageTest.DEF_LAST_MODIFIED
+                RxNpmProxyStorageTest.readContent(),
+                RxNpmProxyStorageTest.DEF_LAST_MODIFIED
             )
         ).blockingAwait();
     }
@@ -208,9 +208,9 @@ public final class NpmProxyStorageTest {
         this.storage.save(
             new NpmAsset(
                 path,
-                new Content.From(NpmProxyStorageTest.DEF_CONTENT.getBytes()),
-                NpmProxyStorageTest.DEF_LAST_MODIFIED,
-                NpmProxyStorageTest.DEF_CONTENT_TYPE
+                new Content.From(RxNpmProxyStorageTest.DEF_CONTENT.getBytes()),
+                RxNpmProxyStorageTest.DEF_LAST_MODIFIED,
+                RxNpmProxyStorageTest.DEF_CONTENT_TYPE
             )
         ).blockingAwait();
     }
