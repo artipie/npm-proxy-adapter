@@ -195,13 +195,13 @@ public final class NpmProxyTest {
     }
 
     @BeforeEach
-    void setUp() {
+    void setUp() throws IOException {
         this.npm = new NpmProxy(NpmProxyTest.vertx, this.storage, this.remote);
         Mockito.doNothing().when(this.remote).close();
     }
 
     @AfterEach
-    void tearDown() {
+    void tearDown() throws IOException {
         this.npm.close();
         Mockito.verify(this.remote).close();
     }

@@ -26,13 +26,14 @@ package com.artipie.npm.proxy;
 import com.artipie.npm.proxy.model.NpmAsset;
 import com.artipie.npm.proxy.model.NpmPackage;
 import io.reactivex.Maybe;
+import java.io.Closeable;
 import java.nio.file.Path;
 
 /**
  * NPM Remote client interface.
  * @since 0.1
  */
-public interface NpmRemote {
+public interface NpmRemote extends Closeable {
     /**
      * Loads package from remote repository.
      * @param name Package name
@@ -54,9 +55,4 @@ public interface NpmRemote {
      * @return NpmAsset or empty
      */
     Maybe<NpmAsset> loadAsset(String path, Path tmp);
-
-    /**
-     * Close NPM Remote client.
-     */
-    void close();
 }

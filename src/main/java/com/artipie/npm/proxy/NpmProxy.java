@@ -29,6 +29,7 @@ import com.artipie.npm.proxy.model.NpmAsset;
 import com.artipie.npm.proxy.model.NpmPackage;
 import io.reactivex.Maybe;
 import io.vertx.reactivex.core.Vertx;
+import java.io.IOException;
 import java.nio.file.Paths;
 
 /**
@@ -114,8 +115,9 @@ public class NpmProxy {
 
     /**
      * Close NPM Proxy adapter and underlying remote client.
+     * @throws IOException when underlying remote client fails to close
      */
-    public void close() {
+    public void close() throws IOException {
         this.remote.close();
     }
 
