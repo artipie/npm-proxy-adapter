@@ -50,7 +50,7 @@ public abstract class NpmPath {
      * @param abspath Absolute path
      * @return Relative path
      */
-    public String value(final String abspath) {
+    public final String value(final String abspath) {
         final Matcher matcher = this.pattern().matcher(abspath);
         if (matcher.matches()) {
             final String path = matcher.group(1);
@@ -71,7 +71,7 @@ public abstract class NpmPath {
      * Gets base path prefix.
      * @return Bas path prefix
      */
-    public String prefix() {
+    public final String prefix() {
         return this.base;
     }
 

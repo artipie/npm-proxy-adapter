@@ -27,7 +27,9 @@ import java.util.regex.Pattern;
 import org.apache.commons.lang3.StringUtils;
 
 /**
- * Package path helper.
+ * Package path helper. Artipie maps concrete repositories on the path prefixes in the URL.
+ * This class provides the way to match package requests with prefixes correctly.
+ * Also, it allows to get relative path for using with the Storage instances.
  * @since 0.1
  */
 public final class PackagePath extends NpmPath {

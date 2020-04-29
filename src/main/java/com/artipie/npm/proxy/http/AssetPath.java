@@ -27,7 +27,9 @@ import java.util.regex.Pattern;
 import org.apache.commons.lang3.StringUtils;
 
 /**
- * Asset path helper.
+ * Asset path helper. Artipie maps concrete repositories on the path prefixes in the URL.
+ * This class provides the way to match asset requests with prefixes correctly.
+ * Also, it allows to get relative asset path for using with the Storage instances.
  * @since 0.1
  */
 public final class AssetPath extends NpmPath {
