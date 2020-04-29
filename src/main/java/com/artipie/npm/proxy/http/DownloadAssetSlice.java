@@ -33,11 +33,9 @@ import com.artipie.http.rs.RsWithBody;
 import com.artipie.http.rs.RsWithHeaders;
 import com.artipie.http.rs.RsWithStatus;
 import com.artipie.npm.proxy.NpmProxy;
-import com.jcabi.log.Logger;
 import hu.akarnokd.rxjava2.interop.SingleInterop;
 import java.nio.ByteBuffer;
 import java.util.Map;
-import java.util.regex.Pattern;
 import org.cactoos.list.ListOf;
 import org.cactoos.map.MapEntry;
 import org.reactivestreams.Publisher;
@@ -49,32 +47,32 @@ import org.reactivestreams.Publisher;
  */
 public final class DownloadAssetSlice implements Slice {
     /**
-     * Download asset request URL regexp pattern.
-     */
-    public static final Pattern PATH_PATTERN = Pattern.compile("^(.+)/-/(.+)$");
-
-    /**
      * NPM Proxy facade.
      */
     private final NpmProxy npm;
 
     /**
+     * Asset path helper.
+     */
+    private final AssetPath path;
+
+    /**
      * Ctor.
      *
      * @param npm NPM Proxy facade
+     * @param path Asset path helper
      */
-    public DownloadAssetSlice(final NpmProxy npm) {
+    public DownloadAssetSlice(final NpmProxy npm, final AssetPath path) {
         this.npm = npm;
+        this.path = path;
     }
 
     @Override
     public Response response(final String line,
         final Iterable<Map.Entry<String, String>> rqheaders,
         final Publisher<ByteBuffer> body) {
-        final String path = new RequestLineFrom(line).uri().getPath().substring(1);
-        Logger.debug(DownloadPackageSlice.class, "Determined asset path is: %s", path);
         return new AsyncResponse(
-            this.npm.getAsset(path)
+            this.npm.getAsset(this.path.value(new RequestLineFrom(line).uri().getPath()))
                 .map(
                     asset -> (Response) new RsWithHeaders(
                         new RsWithBody(

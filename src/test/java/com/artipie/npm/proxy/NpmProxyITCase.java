@@ -108,7 +108,10 @@ public final class NpmProxyITCase {
         final Container.ExecResult result = this.npmcnter.execInContainer(
             "npm",
             "--registry",
-            String.format("http://host.testcontainers.internal:%d", NpmProxyITCase.listenPort),
+            String.format(
+                "http://host.testcontainers.internal:%d/npm-proxy",
+                NpmProxyITCase.listenPort
+            ),
             "install",
             "asdas"
         );
@@ -128,7 +131,10 @@ public final class NpmProxyITCase {
         final Container.ExecResult result = this.npmcnter.execInContainer(
             "npm",
             "--registry",
-            String.format("http://host.testcontainers.internal:%d", NpmProxyITCase.listenPort),
+            String.format(
+                "http://host.testcontainers.internal:%d/npm-proxy",
+                NpmProxyITCase.listenPort
+            ),
             "install",
             "asdas"
         );
@@ -137,7 +143,7 @@ public final class NpmProxyITCase {
             result.getStderr(),
             new StringContains(
                 String.format(
-                    "Not Found - GET http://host.testcontainers.internal:%d/asdas",
+                    "Not Found - GET http://host.testcontainers.internal:%d/npm-proxy/asdas",
                     NpmProxyITCase.listenPort
                 )
             )
@@ -154,7 +160,10 @@ public final class NpmProxyITCase {
         final Container.ExecResult result = this.npmcnter.execInContainer(
             "npm",
             "--registry",
-            String.format("http://host.testcontainers.internal:%d", NpmProxyITCase.listenPort),
+            String.format(
+                "http://host.testcontainers.internal:%d/npm-proxy",
+                NpmProxyITCase.listenPort
+            ),
             "install",
             "asdas"
         );
@@ -164,7 +173,7 @@ public final class NpmProxyITCase {
             new StringContains(
                 String.format(
                     //@checkstyle LineLengthCheck (1 line)
-                    "Not Found - GET http://host.testcontainers.internal:%d/asdas/-/asdas-1.0.0.tgz",
+                    "Not Found - GET http://host.testcontainers.internal:%d/npm-proxy/asdas/-/asdas-1.0.0.tgz",
                     NpmProxyITCase.listenPort
                 )
             )
@@ -189,7 +198,7 @@ public final class NpmProxyITCase {
             NpmProxyITCase.VERTX,
             storage
         );
-        final NpmProxySlice slice = new NpmProxySlice(npm);
+        final NpmProxySlice slice = new NpmProxySlice("npm-proxy", npm);
         this.srv = new VertxSliceServer(NpmProxyITCase.VERTX, slice, NpmProxyITCase.listenPort);
         this.srv.start();
     }

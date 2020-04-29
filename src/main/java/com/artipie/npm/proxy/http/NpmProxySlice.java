@@ -49,26 +49,30 @@ public final class NpmProxySlice implements Slice {
     /**
      * Ctor.
      *
+     * @param path NPM proxy repo path ("" if NPM proxy should handle ROOT context path)
      * @param npm NPM Proxy facade
      */
-    public NpmProxySlice(final NpmProxy npm) {
+    @SuppressWarnings("PMD.ConstructorOnlyInitializesOrCallOtherConstructors")
+    public NpmProxySlice(final String path, final NpmProxy npm) {
+        final PackagePath ppath = new PackagePath(path);
+        final AssetPath apath = new AssetPath(path);
         this.route = new SliceRoute(
             new SliceRoute.Path(
                 new RtRule.Multiple(
                     new RtRule.ByMethod(RqMethod.GET),
-                    new RtRule.ByPath(DownloadPackageSlice.PATH_PATTERN)
+                    new RtRule.ByPath(ppath.pattern())
                 ),
                 new LoggingSlice(
-                    new DownloadPackageSlice(npm)
+                    new DownloadPackageSlice(npm, ppath)
                 )
             ),
             new SliceRoute.Path(
                 new RtRule.Multiple(
                     new RtRule.ByMethod(RqMethod.GET),
-                    new RtRule.ByPath(DownloadAssetSlice.PATH_PATTERN)
+                    new RtRule.ByPath(apath.pattern())
                 ),
                 new LoggingSlice(
-                    new DownloadAssetSlice(npm)
+                    new DownloadAssetSlice(npm, apath)
                 )
             ),
             new SliceRoute.Path(
