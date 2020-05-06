@@ -101,18 +101,19 @@ public final class HttpNpmRemoteTest {
             true
         );
         MatcherAssert.assertThat(
-            pkg.lastModified(),
+            pkg.meta().lastModified(),
             new IsEqual<>(HttpNpmRemoteTest.LAST_MODIFIED)
         );
         final OffsetDateTime checked = OffsetDateTime.now();
         MatcherAssert.assertThat(
             String.format(
-                "Unexpected last updated date: %s (started: %s, checked: %s)",
-                pkg.lastUpdated(),
+                "Unexpected last refreshed date: %s (started: %s, checked: %s)",
+                    pkg.meta().lastRefreshed(),
                 started,
                 checked
             ),
-            pkg.lastUpdated().isAfter(started) && !pkg.lastUpdated().isAfter(checked)
+            pkg.meta().lastRefreshed().isAfter(started)
+                && !pkg.meta().lastRefreshed().isAfter(checked)
         );
     }
 
@@ -135,11 +136,11 @@ public final class HttpNpmRemoteTest {
                 new IsEqual<>(HttpNpmRemoteTest.DEF_CONTENT)
             );
             MatcherAssert.assertThat(
-                asset.lastModified(),
+                asset.meta().lastModified(),
                 new IsEqual<>(HttpNpmRemoteTest.LAST_MODIFIED)
             );
             MatcherAssert.assertThat(
-                asset.contentType(),
+                asset.meta().contentType(),
                 new IsEqual<>(HttpNpmRemoteTest.DEF_CONTENT_TYPE)
             );
         } finally {

@@ -55,25 +55,25 @@ public final class RxNpmProxyStorageTest {
     /**
      * Last modified date for both package and asset.
      */
-    private static final String LAST_MODIFIED = "Tue, 24 Mar 2020 12:15:16 GMT";
+    private static final String MODIFIED = "Tue, 24 Mar 2020 12:15:16 GMT";
 
     /**
-     * Last updated date for package (datetime).
+     * Last refreshed date for package (datetime).
      */
-    private static final OffsetDateTime LAST_UPDATED = OffsetDateTime.of(
+    private static final OffsetDateTime REFRESHED = OffsetDateTime.of(
         LocalDateTime.of(2020, Month.APRIL, 24, 12, 15, 16, 123_456_789),
         ZoneOffset.UTC
     );
 
     /**
-     * Last updated date for package (string).
+     * Last refreshed date for package (string).
      */
-    private static final String LAST_UPDATED_STR = "2020-04-24T12:15:16.123456789Z";
+    private static final String REFRESHED_STR = "2020-04-24T12:15:16.123456789Z";
 
     /**
      * Asset Content-Type.
      */
-    private static final String DEF_CONTENT_TYPE = "application/octet-stream";
+    private static final String CONTENT_TYPE = "application/octet-stream";
 
     /**
      * Assert content.
@@ -92,7 +92,7 @@ public final class RxNpmProxyStorageTest {
 
     @Test
     public void savesPackage() throws IOException, ExecutionException, InterruptedException {
-        this.doSavePackage("asdas", RxNpmProxyStorageTest.LAST_UPDATED);
+        this.doSavePackage("asdas", RxNpmProxyStorageTest.REFRESHED);
         MatcherAssert.assertThat(
             new String(
                 new Concatenation(
@@ -111,11 +111,11 @@ public final class RxNpmProxyStorageTest {
         final JsonObject json = new JsonObject(metadata);
         MatcherAssert.assertThat(
             json.getString("last-modified"),
-            new IsEqual<>(RxNpmProxyStorageTest.LAST_MODIFIED)
+            new IsEqual<>(RxNpmProxyStorageTest.MODIFIED)
         );
         MatcherAssert.assertThat(
-            new JsonObject(metadata).getString("last-updated"),
-            new IsEqual<>(RxNpmProxyStorageTest.LAST_UPDATED_STR)
+            new JsonObject(metadata).getString("last-refreshed"),
+            new IsEqual<>(RxNpmProxyStorageTest.REFRESHED_STR)
         );
     }
 
@@ -141,18 +141,18 @@ public final class RxNpmProxyStorageTest {
         final JsonObject json = new JsonObject(metadata);
         MatcherAssert.assertThat(
             json.getString("last-modified"),
-            new IsEqual<>(RxNpmProxyStorageTest.LAST_MODIFIED)
+            new IsEqual<>(RxNpmProxyStorageTest.MODIFIED)
         );
         MatcherAssert.assertThat(
             json.getString("content-type"),
-            new IsEqual<>(RxNpmProxyStorageTest.DEF_CONTENT_TYPE)
+            new IsEqual<>(RxNpmProxyStorageTest.CONTENT_TYPE)
         );
     }
 
     @Test
     public void loadsPackage() throws IOException {
         final String name = "asdas";
-        this.doSavePackage(name, RxNpmProxyStorageTest.LAST_UPDATED);
+        this.doSavePackage(name, RxNpmProxyStorageTest.REFRESHED);
         final NpmPackage pkg = this.storage.getPackage(name).blockingGet();
         MatcherAssert.assertThat(
             pkg.name(),
@@ -163,12 +163,12 @@ public final class RxNpmProxyStorageTest {
             new IsEqual<>(RxNpmProxyStorageTest.readContent())
         );
         MatcherAssert.assertThat(
-            pkg.lastModified(),
-            new IsEqual<>(RxNpmProxyStorageTest.LAST_MODIFIED)
+            pkg.meta().lastModified(),
+            new IsEqual<>(RxNpmProxyStorageTest.MODIFIED)
         );
         MatcherAssert.assertThat(
-            pkg.lastUpdated(),
-            new IsEqual<>(RxNpmProxyStorageTest.LAST_UPDATED)
+            pkg.meta().lastRefreshed(),
+            new IsEqual<>(RxNpmProxyStorageTest.REFRESHED)
         );
     }
 
@@ -189,12 +189,12 @@ public final class RxNpmProxyStorageTest {
             new IsEqual<>(RxNpmProxyStorageTest.DEF_CONTENT)
         );
         MatcherAssert.assertThat(
-            asset.lastModified(),
-            new IsEqual<>(RxNpmProxyStorageTest.LAST_MODIFIED)
+            asset.meta().lastModified(),
+            new IsEqual<>(RxNpmProxyStorageTest.MODIFIED)
         );
         MatcherAssert.assertThat(
-            asset.contentType(),
-            new IsEqual<>(RxNpmProxyStorageTest.DEF_CONTENT_TYPE)
+            asset.meta().contentType(),
+            new IsEqual<>(RxNpmProxyStorageTest.CONTENT_TYPE)
         );
     }
 
@@ -220,14 +220,14 @@ public final class RxNpmProxyStorageTest {
         this.storage = new RxNpmProxyStorage(new RxStorageWrapper(this.delegate));
     }
 
-    private void doSavePackage(final String name, final OffsetDateTime updated)
+    private void doSavePackage(final String name, final OffsetDateTime refreshed)
         throws IOException {
         this.storage.save(
             new NpmPackage(
                 name,
                 RxNpmProxyStorageTest.readContent(),
-                RxNpmProxyStorageTest.LAST_MODIFIED,
-                updated
+                RxNpmProxyStorageTest.MODIFIED,
+                refreshed
             )
         ).blockingAwait();
     }
@@ -237,8 +237,8 @@ public final class RxNpmProxyStorageTest {
             new NpmAsset(
                 path,
                 new Content.From(RxNpmProxyStorageTest.DEF_CONTENT.getBytes()),
-                RxNpmProxyStorageTest.LAST_MODIFIED,
-                RxNpmProxyStorageTest.DEF_CONTENT_TYPE
+                RxNpmProxyStorageTest.MODIFIED,
+                RxNpmProxyStorageTest.CONTENT_TYPE
            )
         ).blockingAwait();
     }

@@ -34,8 +34,6 @@ import io.reactivex.Maybe;
 import io.reactivex.Single;
 import io.vertx.core.json.JsonObject;
 import java.nio.charset.StandardCharsets;
-import java.time.OffsetDateTime;
-import java.time.format.DateTimeFormatter;
 
 /**
  * Base NPM Proxy storage implementation. It encapsulates storage format details
@@ -69,7 +67,7 @@ public final class RxNpmProxyStorage implements NpmProxyStorage {
             this.storage.save(
                 new Key.From(pkg.name(), "package.metadata"),
                 new Content.From(
-                    RxNpmProxyStorage.packageMetadata(pkg).getBytes(StandardCharsets.UTF_8)
+                    pkg.meta().json().encode().getBytes(StandardCharsets.UTF_8)
                 )
             )
         );
@@ -88,7 +86,7 @@ public final class RxNpmProxyStorage implements NpmProxyStorage {
                     String.format("%s.metadata", asset.path())
                 ),
                 new Content.From(
-                    RxNpmProxyStorage.assetMetadata(asset).getBytes(StandardCharsets.UTF_8)
+                    asset.meta().json().encode().getBytes(StandardCharsets.UTF_8)
                 )
             )
         );
@@ -141,11 +139,7 @@ public final class RxNpmProxyStorage implements NpmProxyStorage {
                     new NpmPackage(
                         name,
                         new String(content.array(), StandardCharsets.UTF_8),
-                        metadata.getString("last-modified"),
-                        OffsetDateTime.parse(
-                            metadata.getString("last-updated"),
-                            DateTimeFormatter.ISO_OFFSET_DATE_TIME
-                        )
+                        new NpmPackage.Metadata(metadata)
                     )
                 );
     }
@@ -166,33 +160,9 @@ public final class RxNpmProxyStorage implements NpmProxyStorage {
                     new NpmAsset(
                         path,
                         content,
-                        metadata.getString("last-modified"),
-                        metadata.getString("content-type")
+                        new NpmAsset.Metadata(metadata)
                     )
             );
     }
 
-    /**
-     * Generate additional package metadata (last modified date, etc).
-     * @param pkg NPM package
-     * @return Additional adapter metadata for package
-     */
-    private static String packageMetadata(final NpmPackage pkg) {
-        final JsonObject json = new JsonObject();
-        json.put("last-modified", pkg.lastModified());
-        json.put("last-updated", DateTimeFormatter.ISO_OFFSET_DATE_TIME.format(pkg.lastUpdated()));
-        return json.encode();
-    }
-
-    /**
-     * Generate additional asset metadata (last modified date, etc).
-     * @param asset NPM asset
-     * @return Additional adapter metadata for package
-     */
-    private static String assetMetadata(final NpmAsset asset) {
-        final JsonObject json = new JsonObject();
-        json.put("last-modified", asset.lastModified());
-        json.put("content-type", asset.contentType());
-        return json.encode();
-    }
 }

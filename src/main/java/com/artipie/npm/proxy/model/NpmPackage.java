@@ -23,7 +23,9 @@
  */
 package com.artipie.npm.proxy.model;
 
+import io.vertx.core.json.JsonObject;
 import java.time.OffsetDateTime;
+import java.time.format.DateTimeFormatter;
 
 /**
  * NPM Package.
@@ -42,32 +44,35 @@ public final class NpmPackage {
     private final String content;
 
     /**
-     * Last modified date.
+     * Package metadata.
      */
-    private final String modified;
-
-    /**
-     * Last updated date.
-     */
-    private final OffsetDateTime updated;
+    private final Metadata metadata;
 
     /**
      * Ctor.
      * @param name Package name
      * @param content JSON data
      * @param modified Last modified date
-     * @param updated Last update date
+     * @param refreshed Last update date
      * @checkstyle ParameterNumberCheck (10 lines)
      */
-    public NpmPackage(
-        final String name,
+    public NpmPackage(final String name,
         final String content,
         final String modified,
-        final OffsetDateTime updated) {
+        final OffsetDateTime refreshed) {
+        this(name, content, new Metadata(modified, refreshed));
+    }
+
+    /**
+     * Ctor.
+     * @param name Package name
+     * @param content JSON data
+     * @param metadata Package metadata
+     */
+    public NpmPackage(final String name, final String content, final Metadata metadata) {
         this.name = name;
         this.content = content;
-        this.modified = modified;
-        this.updated = updated;
+        this.metadata = metadata;
     }
 
     /**
@@ -87,18 +92,81 @@ public final class NpmPackage {
     }
 
     /**
-     * Get last modified date.
-     * @return Last modified date
+     * Get package metadata.
+     * @return Package metadata
      */
-    public String lastModified() {
-        return this.modified;
+    public Metadata meta() {
+        return this.metadata;
     }
 
     /**
-     * Get last updated date.
-     * @return Last updated date
+     * NPM Package metadata.
+     * @since 0.2
      */
-    public OffsetDateTime lastUpdated() {
-        return this.updated;
+    @SuppressWarnings("PMD.AvoidDuplicateLiterals")
+    public static class Metadata {
+        /**
+         * Last modified date.
+         */
+        private final String modified;
+
+        /**
+         * Last refreshed date.
+         */
+        private final OffsetDateTime refreshed;
+
+        /**
+         * Ctor.
+         * @param json JSON representation of metadata
+         */
+        public Metadata(final JsonObject json) {
+            this(
+                json.getString("last-modified"),
+                OffsetDateTime.parse(
+                    json.getString("last-refreshed"),
+                    DateTimeFormatter.ISO_OFFSET_DATE_TIME
+                )
+            );
+        }
+
+        /**
+         * Ctor.
+         * @param modified Last modified date
+         * @param refreshed Last refreshed date
+         */
+        Metadata(final String modified, final OffsetDateTime refreshed) {
+            this.modified = modified;
+            this.refreshed = refreshed;
+        }
+
+        /**
+         * Get last modified date.
+         * @return Last modified date
+         */
+        public String lastModified() {
+            return this.modified;
+        }
+
+        /**
+         * Get last refreshed date.
+         * @return The date of last attempt to refresh metadata
+         */
+        public OffsetDateTime lastRefreshed() {
+            return this.refreshed;
+        }
+
+        /**
+         * Get JSON representation of metadata.
+         * @return JSON representation
+         */
+        public JsonObject json() {
+            final JsonObject json = new JsonObject();
+            json.put("last-modified", this.modified);
+            json.put(
+                "last-refreshed",
+                DateTimeFormatter.ISO_OFFSET_DATE_TIME.format(this.refreshed)
+            );
+            return json;
+        }
     }
 }

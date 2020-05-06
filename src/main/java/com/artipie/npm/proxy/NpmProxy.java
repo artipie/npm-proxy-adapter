@@ -102,7 +102,7 @@ public class NpmProxy {
     public Maybe<NpmPackage> getPackage(final String name) {
         return this.storage.getPackage(name).flatMap(
             pkg -> {
-                if (Duration.between(pkg.lastUpdated(), OffsetDateTime.now())
+                if (Duration.between(pkg.meta().lastRefreshed(), OffsetDateTime.now())
                     .compareTo(this.config.metadataTtl()) > 0) {
                     return this.remotePackage(name).switchIfEmpty(Maybe.just(pkg));
                 } else {

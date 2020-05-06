@@ -34,7 +34,7 @@ import org.junit.jupiter.api.Test;
 /**
  * NPM Proxy config test.
  *
- * @since 0.1
+ * @since 0.2
  */
 public final class NpmProxyConfigTest {
     @Test

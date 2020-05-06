@@ -96,7 +96,7 @@ public final class DownloadPackageSlice implements Slice {
                         ),
                         new ListOf<Map.Entry<String, String>>(
                             new MapEntry<>("Content-Type", "application/json"),
-                            new MapEntry<>("Last-Modified", pkg.lastModified())
+                            new MapEntry<>("Last-Modified", pkg.meta().lastModified())
                         )
                     )
                 ).toSingle(new RsNotFound())

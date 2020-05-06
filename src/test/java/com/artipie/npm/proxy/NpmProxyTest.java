@@ -102,7 +102,7 @@ public final class NpmProxyTest {
         final String name = "asdas";
         final NpmPackage expected = defaultPackage(OffsetDateTime.now());
         Mockito.when(this.storage.getPackage(name)).thenReturn(Maybe.empty());
-        Mockito.when(this.remote.loadPackage(name)).thenReturn(Maybe.just(expected));
+        Mockito.doReturn(Maybe.just(expected)).when(this.remote).loadPackage(name);
         Mockito.when(this.storage.save(expected)).thenReturn(Completable.complete());
         MatcherAssert.assertThat(
             this.npm.getPackage(name).blockingGet(),
@@ -152,7 +152,7 @@ public final class NpmProxyTest {
     public void getsPackageFromCache() throws IOException {
         final String name = "asdas";
         final NpmPackage expected = defaultPackage(OffsetDateTime.now());
-        Mockito.when(this.storage.getPackage(name)).thenReturn(Maybe.just(expected));
+        Mockito.doReturn(Maybe.just(expected)).when(this.storage).getPackage(name);
         MatcherAssert.assertThat(
             this.npm.getPackage(name).blockingGet(),
             new IsSame<>(expected)
@@ -229,7 +229,7 @@ public final class NpmProxyTest {
         NpmProxyTest.vertx.close();
     }
 
-    private static NpmPackage defaultPackage(final OffsetDateTime updated) throws IOException {
+    private static NpmPackage defaultPackage(final OffsetDateTime refreshed) throws IOException {
         return new NpmPackage(
             "asdas",
             IOUtils.resourceToString(
@@ -237,7 +237,7 @@ public final class NpmProxyTest {
                 StandardCharsets.UTF_8
             ),
             NpmProxyTest.LAST_MODIFIED,
-            updated
+            refreshed
         );
     }
 
@@ -252,7 +252,7 @@ public final class NpmProxyTest {
 
     /**
      * Tests with metadata TTL exceeded.
-     * @since 0.1
+     * @since 0.2
      */
     @Nested
     class MetadataTtlExceeded {
@@ -262,23 +262,21 @@ public final class NpmProxyTest {
             final NpmPackage original = NpmProxyTest.defaultPackage(
                 OffsetDateTime.now().minus(2, ChronoUnit.HOURS)
             );
-            final NpmPackage updated = defaultPackage(OffsetDateTime.now());
+            final NpmPackage refreshed = defaultPackage(OffsetDateTime.now());
+            Mockito.doReturn(Maybe.just(original))
+                .when(NpmProxyTest.this.storage).getPackage(name);
+            Mockito.doReturn(Maybe.just(refreshed))
+                .when(NpmProxyTest.this.remote).loadPackage(name);
             Mockito.when(
-                NpmProxyTest.this.storage.getPackage(name)
-            ).thenReturn(Maybe.just(original));
-            Mockito.when(
-                NpmProxyTest.this.remote.loadPackage(name)
-            ).thenReturn(Maybe.just(updated));
-            Mockito.when(
-                NpmProxyTest.this.storage.save(updated)
+                NpmProxyTest.this.storage.save(refreshed)
             ).thenReturn(Completable.complete());
             MatcherAssert.assertThat(
                 NpmProxyTest.this.npm.getPackage(name).blockingGet(),
-                new IsSame<>(updated)
+                new IsSame<>(refreshed)
             );
             Mockito.verify(NpmProxyTest.this.storage).getPackage(name);
             Mockito.verify(NpmProxyTest.this.remote).loadPackage(name);
-            Mockito.verify(NpmProxyTest.this.storage).save(updated);
+            Mockito.verify(NpmProxyTest.this.storage).save(refreshed);
         }
 
         @Test
@@ -287,9 +285,8 @@ public final class NpmProxyTest {
             final NpmPackage original = NpmProxyTest.defaultPackage(
                 OffsetDateTime.now().minus(2, ChronoUnit.HOURS)
             );
-            Mockito.when(
-                NpmProxyTest.this.storage.getPackage(name)
-            ).thenReturn(Maybe.just(original));
+            Mockito.doReturn(Maybe.just(original))
+                .when(NpmProxyTest.this.storage).getPackage(name);
             Mockito.when(
                 NpmProxyTest.this.remote.loadPackage(name)
             ).thenReturn(Maybe.empty());
