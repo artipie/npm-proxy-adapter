@@ -35,6 +35,7 @@ import io.vertx.reactivex.core.Vertx;
 import io.vertx.reactivex.ext.web.client.WebClient;
 import io.vertx.reactivex.ext.web.codec.BodyCodec;
 import java.nio.file.Path;
+import java.time.OffsetDateTime;
 
 /**
  * Base NPM Remote client implementation. It calls remote NPM repository
@@ -84,7 +85,8 @@ public final class HttpNpmRemote implements NpmRemote {
                             new NpmPackage(
                                 name,
                                 new CachedContent(response.bodyAsString(), name).value(),
-                                response.getHeader("Last-Modified")
+                                response.getHeader("Last-Modified"),
+                                OffsetDateTime.now()
                             )
                         );
                     } else {

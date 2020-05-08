@@ -23,6 +23,8 @@
  */
 package com.artipie.npm.proxy;
 
+import com.amihaiemil.eoyaml.Yaml;
+import com.amihaiemil.eoyaml.YamlMapping;
 import com.artipie.asto.Content;
 import com.artipie.npm.proxy.model.NpmAsset;
 import com.artipie.npm.proxy.model.NpmPackage;
@@ -31,6 +33,8 @@ import io.reactivex.Maybe;
 import io.vertx.reactivex.core.Vertx;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.time.OffsetDateTime;
+import java.time.temporal.ChronoUnit;
 import org.apache.commons.io.IOUtils;
 import org.hamcrest.MatcherAssert;
 import org.hamcrest.core.IsSame;
@@ -38,6 +42,7 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -95,19 +100,21 @@ public final class NpmProxyTest {
     @Test
     public void getsPackage() throws IOException {
         final String name = "asdas";
-        final NpmPackage expected = defaultPackage();
-        Mockito.when(this.remote.loadPackage(name)).thenReturn(Maybe.just(expected));
+        final NpmPackage expected = defaultPackage(OffsetDateTime.now());
+        Mockito.when(this.storage.getPackage(name)).thenReturn(Maybe.empty());
+        Mockito.doReturn(Maybe.just(expected)).when(this.remote).loadPackage(name);
         Mockito.when(this.storage.save(expected)).thenReturn(Completable.complete());
         MatcherAssert.assertThat(
             this.npm.getPackage(name).blockingGet(),
             new IsSame<>(expected)
         );
+        Mockito.verify(this.storage).getPackage(name);
         Mockito.verify(this.remote).loadPackage(name);
         Mockito.verify(this.storage).save(expected);
     }
 
     @Test
-    public void getsAsset() throws IOException {
+    public void getsAsset() {
         final String path = "asdas/-/asdas-1.0.0.tgz";
         final NpmAsset loaded = defaultAsset();
         final NpmAsset expected = defaultAsset();
@@ -144,19 +151,17 @@ public final class NpmProxyTest {
     @Test
     public void getsPackageFromCache() throws IOException {
         final String name = "asdas";
-        final NpmPackage expected = defaultPackage();
-        Mockito.when(this.remote.loadPackage(name)).thenReturn(Maybe.empty());
-        Mockito.when(this.storage.getPackage(name)).thenReturn(Maybe.just(expected));
+        final NpmPackage expected = defaultPackage(OffsetDateTime.now());
+        Mockito.doReturn(Maybe.just(expected)).when(this.storage).getPackage(name);
         MatcherAssert.assertThat(
             this.npm.getPackage(name).blockingGet(),
             new IsSame<>(expected)
         );
-        Mockito.verify(this.remote).loadPackage(name);
         Mockito.verify(this.storage).getPackage(name);
     }
 
     @Test
-    public void getsAssetFromCache() throws IOException {
+    public void getsAssetFromCache() {
         final String path = "asdas/-/asdas-1.0.0.tgz";
         final NpmAsset expected = defaultAsset();
         Mockito.when(this.storage.getAsset(path)).thenReturn(Maybe.just(expected));
@@ -170,14 +175,14 @@ public final class NpmProxyTest {
     @Test
     public void doesNotFindPackage() {
         final String name = "asdas";
-        Mockito.when(this.remote.loadPackage(name)).thenReturn(Maybe.empty());
         Mockito.when(this.storage.getPackage(name)).thenReturn(Maybe.empty());
+        Mockito.when(this.remote.loadPackage(name)).thenReturn(Maybe.empty());
         MatcherAssert.assertThat(
             "Unexpected package found",
             this.npm.getPackage(name).isEmpty().blockingGet()
         );
-        Mockito.verify(this.remote).loadPackage(name);
         Mockito.verify(this.storage).getPackage(name);
+        Mockito.verify(this.remote).loadPackage(name);
     }
 
     @Test
@@ -196,7 +201,15 @@ public final class NpmProxyTest {
 
     @BeforeEach
     void setUp() throws IOException {
-        this.npm = new NpmProxy(NpmProxyTest.vertx, this.storage, this.remote);
+        final YamlMapping yaml = Yaml.createYamlMappingBuilder()
+            .add("metadata-ttl-minutes", "60")
+            .build();
+        this.npm = new NpmProxy(
+            new NpmProxyConfig(yaml),
+            NpmProxyTest.vertx,
+            this.storage,
+            this.remote
+        );
         Mockito.doNothing().when(this.remote).close();
     }
 
@@ -216,23 +229,73 @@ public final class NpmProxyTest {
         NpmProxyTest.vertx.close();
     }
 
-    private static NpmPackage defaultPackage() throws IOException {
+    private static NpmPackage defaultPackage(final OffsetDateTime refreshed) throws IOException {
         return new NpmPackage(
             "asdas",
             IOUtils.resourceToString(
                 "/json/cached.json",
                 StandardCharsets.UTF_8
             ),
-            NpmProxyTest.LAST_MODIFIED
+            NpmProxyTest.LAST_MODIFIED,
+            refreshed
         );
     }
 
-    private static NpmAsset defaultAsset() throws IOException {
+    private static NpmAsset defaultAsset() {
         return new NpmAsset(
             "asdas/-/asdas-1.0.0.tgz",
             new Content.From(NpmProxyTest.DEF_CONTENT.getBytes()),
             NpmProxyTest.LAST_MODIFIED,
             NpmProxyTest.DEF_CONTENT_TYPE
         );
+    }
+
+    /**
+     * Tests with metadata TTL exceeded.
+     * @since 0.2
+     */
+    @Nested
+    class MetadataTtlExceeded {
+        @Test
+        public void getsPackage() throws IOException {
+            final String name = "asdas";
+            final NpmPackage original = NpmProxyTest.defaultPackage(
+                OffsetDateTime.now().minus(2, ChronoUnit.HOURS)
+            );
+            final NpmPackage refreshed = defaultPackage(OffsetDateTime.now());
+            Mockito.doReturn(Maybe.just(original))
+                .when(NpmProxyTest.this.storage).getPackage(name);
+            Mockito.doReturn(Maybe.just(refreshed))
+                .when(NpmProxyTest.this.remote).loadPackage(name);
+            Mockito.when(
+                NpmProxyTest.this.storage.save(refreshed)
+            ).thenReturn(Completable.complete());
+            MatcherAssert.assertThat(
+                NpmProxyTest.this.npm.getPackage(name).blockingGet(),
+                new IsSame<>(refreshed)
+            );
+            Mockito.verify(NpmProxyTest.this.storage).getPackage(name);
+            Mockito.verify(NpmProxyTest.this.remote).loadPackage(name);
+            Mockito.verify(NpmProxyTest.this.storage).save(refreshed);
+        }
+
+        @Test
+        public void getsPackageFromCache() throws IOException {
+            final String name = "asdas";
+            final NpmPackage original = NpmProxyTest.defaultPackage(
+                OffsetDateTime.now().minus(2, ChronoUnit.HOURS)
+            );
+            Mockito.doReturn(Maybe.just(original))
+                .when(NpmProxyTest.this.storage).getPackage(name);
+            Mockito.when(
+                NpmProxyTest.this.remote.loadPackage(name)
+            ).thenReturn(Maybe.empty());
+            MatcherAssert.assertThat(
+                NpmProxyTest.this.npm.getPackage(name).blockingGet(),
+                new IsSame<>(original)
+            );
+            Mockito.verify(NpmProxyTest.this.storage).getPackage(name);
+            Mockito.verify(NpmProxyTest.this.remote).loadPackage(name);
+        }
     }
 }

@@ -35,6 +35,7 @@ import java.net.ServerSocket;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.OffsetDateTime;
 import java.util.concurrent.CountDownLatch;
 import org.apache.commons.io.IOUtils;
 import org.hamcrest.MatcherAssert;
@@ -87,6 +88,7 @@ public final class HttpNpmRemoteTest {
     @Test
     public void loadsPackage() throws IOException, JSONException {
         final String name = "asdas";
+        final OffsetDateTime started = OffsetDateTime.now();
         final NpmPackage pkg = this.remote.loadPackage(name).blockingGet();
         MatcherAssert.assertThat("Package is null", pkg != null);
         MatcherAssert.assertThat(
@@ -99,8 +101,19 @@ public final class HttpNpmRemoteTest {
             true
         );
         MatcherAssert.assertThat(
-            pkg.lastModified(),
+            pkg.meta().lastModified(),
             new IsEqual<>(HttpNpmRemoteTest.LAST_MODIFIED)
+        );
+        final OffsetDateTime checked = OffsetDateTime.now();
+        MatcherAssert.assertThat(
+            String.format(
+                "Unexpected last refreshed date: %s (started: %s, checked: %s)",
+                    pkg.meta().lastRefreshed(),
+                started,
+                checked
+            ),
+            pkg.meta().lastRefreshed().isAfter(started)
+                && !pkg.meta().lastRefreshed().isAfter(checked)
         );
     }
 
@@ -123,11 +136,11 @@ public final class HttpNpmRemoteTest {
                 new IsEqual<>(HttpNpmRemoteTest.DEF_CONTENT)
             );
             MatcherAssert.assertThat(
-                asset.lastModified(),
+                asset.meta().lastModified(),
                 new IsEqual<>(HttpNpmRemoteTest.LAST_MODIFIED)
             );
             MatcherAssert.assertThat(
-                asset.contentType(),
+                asset.meta().contentType(),
                 new IsEqual<>(HttpNpmRemoteTest.DEF_CONTENT_TYPE)
             );
         } finally {

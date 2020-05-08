@@ -82,8 +82,8 @@ public final class DownloadAssetSlice implements Slice {
                             )
                         ),
                         new ListOf<Map.Entry<String, String>>(
-                            new MapEntry<>("Content-Type", asset.contentType()),
-                            new MapEntry<>("Last-Modified", asset.lastModified())
+                            new MapEntry<>("Content-Type", asset.meta().contentType()),
+                            new MapEntry<>("Last-Modified", asset.meta().lastModified())
                         )
                     )
                 )
