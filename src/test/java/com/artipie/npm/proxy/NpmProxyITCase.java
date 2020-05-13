@@ -215,6 +215,9 @@ public final class NpmProxyITCase {
 
     /**
      * Inner subclass to instantiate Npm container.
+     *
+     * We need this class because a situation with generics in testcontainers.
+     * See https://github.com/testcontainers/testcontainers-java/issues/238
      * @since 0.1
      */
     private static class VerdaccioContainer extends GenericContainer<VerdaccioContainer> {
