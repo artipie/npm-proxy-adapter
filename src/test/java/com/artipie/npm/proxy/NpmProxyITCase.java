@@ -29,13 +29,10 @@ import com.artipie.asto.Storage;
 import com.artipie.asto.memory.InMemoryStorage;
 import com.artipie.npm.proxy.http.NpmProxySlice;
 import com.artipie.vertx.VertxSliceServer;
-import com.google.common.net.MediaType;
 import io.vertx.reactivex.core.Vertx;
 import java.io.IOException;
 import java.net.ServerSocket;
-import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
-import org.apache.commons.io.IOUtils;
 import org.hamcrest.MatcherAssert;
 import org.hamcrest.core.AllOf;
 import org.hamcrest.core.IsEqual;
@@ -45,15 +42,9 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockserver.client.MockServerClient;
-import org.mockserver.matchers.Times;
-import org.mockserver.model.BinaryBody;
-import org.mockserver.model.HttpRequest;
-import org.mockserver.model.HttpResponse;
 import org.testcontainers.Testcontainers;
 import org.testcontainers.containers.Container;
 import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.containers.MockServerContainer;
 
 /**
  * Integration test for NPM Proxy.
@@ -78,19 +69,18 @@ public final class NpmProxyITCase {
     private static int listenPort;
 
     /**
-     * Mock server test container.
-     * @todo #1:120m Use real NPM repo instead of mocks.
-     *  Take a look at https://github.com/verdaccio/verdaccio for example
-     */
-    @org.testcontainers.junit.jupiter.Container
-    private final MockServerContainer mockctner = new MockServerContainer();
-
-    /**
      * Node test container.
      */
     @org.testcontainers.junit.jupiter.Container
     private final NodeContainer npmcnter = new NodeContainer()
         .withCommand("tail", "-f", "/dev/null");
+
+    /**
+     * Verdaccio test container.
+     */
+    @org.testcontainers.junit.jupiter.Container
+    private final VerdaccioContainer verdaccio = new VerdaccioContainer()
+        .withExposedPorts(4873);
 
     /**
      * Vertx slice instance.
@@ -99,12 +89,6 @@ public final class NpmProxyITCase {
 
     @Test
     public void installModule() throws IOException, InterruptedException {
-        final MockServerClient mock = new MockServerClient(
-            this.mockctner.getContainerIpAddress(),
-            this.mockctner.getServerPort()
-        );
-        this.successPackage(mock);
-        this.successAsset(mock);
         final Container.ExecResult result = this.npmcnter.execInContainer(
             "npm",
             "--registry",
@@ -136,14 +120,15 @@ public final class NpmProxyITCase {
                 NpmProxyITCase.listenPort
             ),
             "install",
-            "asdas"
+            "packageNotFound"
         );
         MatcherAssert.assertThat(result.getExitCode(), new IsEqual<>(1));
         MatcherAssert.assertThat(
             result.getStderr(),
             new StringContains(
                 String.format(
-                    "Not Found - GET http://host.testcontainers.internal:%d/npm-proxy/asdas",
+                    //@checkstyle LineLengthCheck (1 line)
+                    "Not Found - GET http://host.testcontainers.internal:%d/npm-proxy/packageNotFound",
                     NpmProxyITCase.listenPort
                 )
             )
@@ -152,11 +137,6 @@ public final class NpmProxyITCase {
 
     @Test
     public void assetNotFound() throws IOException, InterruptedException {
-        final MockServerClient mock = new MockServerClient(
-            this.mockctner.getContainerIpAddress(),
-            this.mockctner.getServerPort()
-        );
-        this.successPackage(mock);
         final Container.ExecResult result = this.npmcnter.execInContainer(
             "npm",
             "--registry",
@@ -165,7 +145,7 @@ public final class NpmProxyITCase {
                 NpmProxyITCase.listenPort
             ),
             "install",
-            "asdas"
+            "assetNotFound"
         );
         MatcherAssert.assertThat(result.getExitCode(), new IsEqual<>(1));
         MatcherAssert.assertThat(
@@ -173,7 +153,7 @@ public final class NpmProxyITCase {
             new StringContains(
                 String.format(
                     //@checkstyle LineLengthCheck (1 line)
-                    "Not Found - GET http://host.testcontainers.internal:%d/npm-proxy/asdas/-/asdas-1.0.0.tgz",
+                    "Not Found - GET http://host.testcontainers.internal:%d/npm-proxy/assetNotFound",
                     NpmProxyITCase.listenPort
                 )
             )
@@ -182,8 +162,8 @@ public final class NpmProxyITCase {
 
     @BeforeEach
     void setUp() {
-        final String address = this.mockctner.getContainerIpAddress();
-        final Integer port = this.mockctner.getFirstMappedPort();
+        final String address = this.verdaccio.getContainerIpAddress();
+        final Integer port = this.verdaccio.getFirstMappedPort();
         final Storage storage = new InMemoryStorage();
         final YamlMapping yaml = Yaml.createYamlMappingBuilder()
             .add(
@@ -223,42 +203,6 @@ public final class NpmProxyITCase {
         NpmProxyITCase.VERTX.close();
     }
 
-    private void successPackage(final MockServerClient mock) throws IOException {
-        mock.when(
-            HttpRequest.request()
-                .withPath("/asdas"),
-            Times.once()
-        ).respond(
-            HttpResponse.response()
-                .withHeader("Content-Type", "application/json")
-                .withHeader("Last-Modified", "Wed, 26 Dec 2018 02:15:35 GMT")
-                .withBody(
-                    IOUtils.resourceToString(
-                        "/json/original.json",
-                        StandardCharsets.UTF_8
-                    ),
-                    MediaType.JSON_UTF_8
-                )
-        );
-    }
-
-    private void successAsset(final MockServerClient mock) throws IOException {
-        mock.when(
-            HttpRequest.request()
-                .withPath("/asdas/-/asdas-1.0.0.tgz"),
-            Times.once()
-        ).respond(
-            HttpResponse.response()
-                .withHeader("Content-Type", "application/octet-stream")
-                .withHeader("Last-Modified", "Wed, 26 Dec 2018 02:15:35 GMT")
-                .withBody(
-                    BinaryBody.binary(
-                        IOUtils.resourceToByteArray("/binaries/asdas-1.0.0.tgz")
-                    )
-                )
-        );
-    }
-
     /**
      * Inner subclass to instantiate Node container.
      * @since 0.1
@@ -266,6 +210,19 @@ public final class NpmProxyITCase {
     private static class NodeContainer extends GenericContainer<NodeContainer> {
         NodeContainer() {
             super("node:latest");
+        }
+    }
+
+    /**
+     * Inner subclass to instantiate Npm container.
+     *
+     * We need this class because a situation with generics in testcontainers.
+     * See https://github.com/testcontainers/testcontainers-java/issues/238
+     * @since 0.1
+     */
+    private static class VerdaccioContainer extends GenericContainer<VerdaccioContainer> {
+        VerdaccioContainer() {
+            super("verdaccio/verdaccio");
         }
     }
 }
