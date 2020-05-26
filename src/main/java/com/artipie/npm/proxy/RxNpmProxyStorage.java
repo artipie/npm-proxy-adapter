@@ -58,14 +58,14 @@ public final class RxNpmProxyStorage implements NpmProxyStorage {
 
     @Override
     public Completable save(final NpmPackage pkg) {
-        final Key key = new Key.From(pkg.name(), "package.json");
+        final Key key = new Key.From(pkg.name(), "meta.json");
         return Completable.concatArray(
             this.storage.save(
                 key,
                 new Content.From(pkg.content().getBytes(StandardCharsets.UTF_8))
             ),
             this.storage.save(
-                new Key.From(pkg.name(), "package.metadata"),
+                new Key.From(pkg.name(), "meta.meta"),
                 new Content.From(
                     pkg.meta().json().encode().getBytes(StandardCharsets.UTF_8)
                 )
@@ -83,7 +83,7 @@ public final class RxNpmProxyStorage implements NpmProxyStorage {
             ),
             this.storage.save(
                 new Key.From(
-                    String.format("%s.metadata", asset.path())
+                    String.format("%s.meta", asset.path())
                 ),
                 new Content.From(
                     asset.meta().json().encode().getBytes(StandardCharsets.UTF_8)
@@ -95,7 +95,7 @@ public final class RxNpmProxyStorage implements NpmProxyStorage {
     @Override
     // @checkstyle ReturnCountCheck (15 lines)
     public Maybe<NpmPackage> getPackage(final String name) {
-        return this.storage.exists(new Key.From(name, "package.json"))
+        return this.storage.exists(new Key.From(name, "meta.json"))
             .flatMapMaybe(
                 exists -> {
                     if (exists) {
@@ -128,10 +128,10 @@ public final class RxNpmProxyStorage implements NpmProxyStorage {
      * @return NPM package
      */
     private Single<NpmPackage> readPackage(final String name) {
-        return this.storage.value(new Key.From(name, "package.json"))
+        return this.storage.value(new Key.From(name, "meta.json"))
             .map(Concatenation::new).flatMap(Concatenation::single)
             .zipWith(
-                this.storage.value(new Key.From(name, "package.metadata"))
+                this.storage.value(new Key.From(name, "meta.meta"))
                     .map(Concatenation::new).flatMap(Concatenation::single)
                     .map(metadata -> new String(metadata.array(), StandardCharsets.UTF_8))
                     .map(JsonObject::new),
@@ -152,7 +152,7 @@ public final class RxNpmProxyStorage implements NpmProxyStorage {
     private Single<NpmAsset> readAsset(final String path) {
         return this.storage.value(new Key.From(path))
             .zipWith(
-                this.storage.value(new Key.From(String.format("%s.metadata", path)))
+                this.storage.value(new Key.From(String.format("%s.meta", path)))
                     .map(Concatenation::new).flatMap(Concatenation::single)
                     .map(metadata -> new String(metadata.array(), StandardCharsets.UTF_8))
                     .map(JsonObject::new),
