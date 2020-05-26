@@ -26,7 +26,7 @@
       "dist": {
         "integrity": "sha512-kHJzGk3NudKHGhrYS4lhDS8K/QUMbPLEtk22yXiQbcQWD5pSbhOI4A9yk1owav8IVyW1RlAQHkKn7IjONV8Kdg==",
         "shasum": "6470dd80b94c00db02420e5f7bc6a87d026e76e4",
-        "tarball": "${artipie.npm_proxy_registry}/asdas/-/asdas-1.0.0.tgz"
+        "tarball": "/asdas/-/asdas-1.0.0.tgz"
       },
       "maintainers": [
         {

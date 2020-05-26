@@ -46,6 +46,6 @@ public final class ClientContent extends TransformedContent {
 
     @Override
     String transformRef(final String ref) {
-        return ref.replace(TransformedContent.PLACEHOLDER, this.url);
+        return this.url.concat(ref);
     }
 }

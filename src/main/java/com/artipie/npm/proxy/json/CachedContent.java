@@ -60,7 +60,7 @@ public final class CachedContent extends TransformedContent {
         final Matcher matcher = pattern.matcher(ref);
         final String newref;
         if (matcher.matches()) {
-            newref = String.format("%s/%s", TransformedContent.PLACEHOLDER, matcher.group(2));
+            newref = String.format("/%s", matcher.group(2));
         } else {
             newref = ref;
         }
