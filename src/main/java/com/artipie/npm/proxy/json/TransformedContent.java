@@ -36,11 +36,6 @@ import net.minidev.json.JSONArray;
  */
 public abstract class TransformedContent {
     /**
-     * Placeholder for asset links base URL.
-     */
-    static final String PLACEHOLDER = "${artipie.npm_proxy_registry}";
-
-    /**
      * Original package content.
      */
     private final String data;

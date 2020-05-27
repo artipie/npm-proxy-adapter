@@ -27,10 +27,9 @@ import com.jayway.jsonpath.DocumentContext;
 import com.jayway.jsonpath.JsonPath;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import net.minidev.json.JSONArray;
 import org.apache.commons.io.IOUtils;
 import org.hamcrest.MatcherAssert;
-import org.hamcrest.core.StringStartsWith;
+import org.hamcrest.core.IsEqual;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -47,13 +46,7 @@ public class CachedContentTest {
         );
         final String transformed = new CachedContent(original, "asdas").value();
         final DocumentContext json = JsonPath.parse(transformed);
-        final JSONArray refs = json.read("$.versions.[*].dist.tarball", JSONArray.class);
-        MatcherAssert.assertThat("Could not find asset references", refs.size() > 0);
-        for (final Object ref: refs) {
-            MatcherAssert.assertThat(
-                (String) ref,
-                new StringStartsWith(TransformedContent.PLACEHOLDER)
-            );
-        }
+        final String ref = json.read("$.versions.['1.0.0'].dist.tarball", String.class);
+        MatcherAssert.assertThat(ref, new IsEqual<>("/asdas/-/asdas-1.0.0.tgz"));
     }
 }
