@@ -46,7 +46,9 @@ public class CachedContentTest {
         );
         final String transformed = new CachedContent(original, "asdas").value();
         final DocumentContext json = JsonPath.parse(transformed);
-        final String ref = json.read("$.versions.['1.0.0'].dist.tarball", String.class);
-        MatcherAssert.assertThat(ref, new IsEqual<>("/asdas/-/asdas-1.0.0.tgz"));
+        MatcherAssert.assertThat(
+            json.read("$.versions.['1.0.0'].dist.tarball", String.class),
+            new IsEqual<>("/asdas/-/asdas-1.0.0.tgz")
+        );
     }
 }

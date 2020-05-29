@@ -96,7 +96,7 @@ public final class RxNpmProxyStorageTest {
         MatcherAssert.assertThat(
             new String(
                 new Concatenation(
-                    this.delegate.value(new Key.From("asdas/package.json")).get()
+                    this.delegate.value(new Key.From("asdas/meta.json")).get()
                 ).single().blockingGet().array(),
                 StandardCharsets.UTF_8
             ),
@@ -104,7 +104,7 @@ public final class RxNpmProxyStorageTest {
         );
         final String metadata = new String(
             new Concatenation(
-                this.delegate.value(new Key.From("asdas/package.metadata")).get()
+                this.delegate.value(new Key.From("asdas/meta.meta")).get()
             ).single().blockingGet().array(),
             StandardCharsets.UTF_8
         );
@@ -134,7 +134,7 @@ public final class RxNpmProxyStorageTest {
         );
         final String metadata = new String(
             new Concatenation(
-                this.delegate.value(new Key.From("asdas/-/asdas-1.0.0.tgz.metadata")).get()
+                this.delegate.value(new Key.From("asdas/-/asdas-1.0.0.tgz.meta")).get()
             ).single().blockingGet().array(),
             StandardCharsets.UTF_8
         );
