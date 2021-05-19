@@ -1,3 +1,11 @@
+# This repository is ARCHIVED!
+
+The repository source code is no longer maintained, because it was moved to https://github.com/artipie/npm-adapter 
+
+---
+
+## Archive README
+
 <img src="https://www.artipie.com/logo.svg" width="64px" height="64px"/>
 
 [![EO principles respected here](https://www.elegantobjects.org/badge.svg)](https://www.elegantobjects.org)
